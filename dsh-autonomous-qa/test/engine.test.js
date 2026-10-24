@@ -16,7 +16,7 @@ const read=p=>fs.readFile(path.join(fixture,p),'utf8');
 function fixtureSource(code){return code.replace(/^import\s+.*?;\s*$/gm,'').replace(/^export\s+/gm,'');}
 async function loadFixture(browser,{blocked=false}={}){
   const style=await read('src/style.css');
-  const html=`<!doctype html><html><head><style>${style}${blocked?'':'#overlay{display:none}'}</style></head><body>
+  const html=`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>${style}${blocked?'':'#overlay{display:none}'}</style></head><body>
     <div id="panel"><label>Quantity <input id="quantity" value="3"></label><button id="buy">Buy</button><p>Total: <span id="total">0</span></p></div><div id="overlay">Blocking bar</div></body></html>`;
   const frame=(await browser.cdp.command('Page.getFrameTree')).frameTree.frame.id;
   await browser.cdp.command('Page.setDocumentContent',{frameId:frame,html});
@@ -131,5 +131,14 @@ test('autonomous explorer discovers controls but does not claim unverified corre
     assert.ok(d.actions.some(x=>x.selector==='#buy'));
     assert.equal(d.executed,0);
     assert.equal(d.actions.find(x=>x.selector==='#buy').execution,'NOT_TESTED');
+  }finally{await b.stop();}
+});
+
+
+test('responsive viewport probe flags horizontal overflow on narrow layout',async()=>{
+  const b=new ChromiumDriver();try{await b.start();await loadFixture(b);
+    await b.setViewport(375,800);const v=await auditVisual(b);
+    assert.ok(v.issues.some(x=>x.type==='horizontal-overflow'),JSON.stringify(v.issues));
+    assert.equal(v.viewport.width,375);
   }finally{await b.stop();}
 });

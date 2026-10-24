@@ -65,14 +65,14 @@ export async function executeStep(browser,step,{outputDir='',index=0}={}){
     }
   }
 }
-export async function runScenario({projectRoot,url,steps=[],outputDir,chromium,allowExternal=false,scan=true,autoVisual=true,width=1280,height=800}={}) {
+export async function runScenario({projectRoot,url,steps=[],outputDir,chromium,allowExternal=false,scan=true,autoVisual=true,width=1280,height=800,viewports=[]}={}) {
   if(!projectRoot)throw new Error('projectRoot is required');
   const root=path.resolve(projectRoot);
   const out=path.resolve(outputDir||path.join(root,'.dsh-qa-report'));
   if(out===root)throw new Error('Output directory must not be project root');
   await fs.mkdir(out,{recursive:true});
   const startedAt=new Date().toISOString();
-  const report={schemaVersion:1,startedAt,projectRoot:root,outputs:out,scan:scan?scanProject(root):null,tests:[],visual:null,logs:{},summary:{pass:0,fail:0,suspect:0,unknown:0},limitations:['Static import graph is not a complete interprocedural call graph.','Visual heuristics cannot establish design intent without an approved baseline.','Precise root-cause line attribution requires independent causal validation and may be unavailable.','Chromium testing does not prove Firefox/Safari compatibility.']};
+  const report={schemaVersion:1,startedAt,projectRoot:root,outputs:out,scan:scan?scanProject(root):null,tests:[],visual:null,visualByViewport:[],logs:{},summary:{pass:0,fail:0,suspect:0,unknown:0},limitations:['Static import graph is not a complete interprocedural call graph.','Visual heuristics cannot establish design intent without an approved baseline.','Precise root-cause line attribution requires independent causal validation and may be unavailable.','Chromium testing does not prove Firefox/Safari compatibility.']};
   const browser=new ChromiumDriver({executablePath:chromium,allowExternal,width,height});
   try {
     await browser.start();
@@ -89,10 +89,19 @@ export async function runScenario({projectRoot,url,steps=[],outputDir,chromium,a
       if(item.status==='FAIL'&&step.stopOnFailure)break;
     }
     if(autoVisual){report.visual=await auditVisual(browser);await enrichVisualFindings(browser,report.visual.issues);}
+    for(const vp of viewports.slice(0,12)){
+      try{
+        const width=Number(vp.width),height=Number(vp.height||800);
+        await browser.setViewport(width,height);
+        const audit=await auditVisual(browser);
+        report.visualByViewport.push({width,height,audit});
+      }catch(e){report.visualByViewport.push({width:vp.width,height:vp.height,error:serial(e)});}
+    }
     report.logs=structuredClone(browser.logs);
   }catch(e){report.fatalError=serial(e);}finally{await browser.stop();}
   for(const r of report.tests){if(r.status==='PASS')report.summary.pass++;else if(r.status==='FAIL')report.summary.fail++;else report.summary.unknown++;}
   const counts={FAIL:0,SUSPECT:0};for(const issue of report.visual?.issues||[]){if(issue.verdict==='FAIL')counts.FAIL++;else counts.SUSPECT++;}
+  for(const v of report.visualByViewport){for(const i of v.audit?.issues||[]){if(i.verdict==='FAIL')counts.FAIL++;else counts.SUSPECT++;}}
   report.summary.visualFail=counts.FAIL;report.summary.visualSuspect=counts.SUSPECT;
   report.summary.fatal=!!report.fatalError;
   report.codeCandidates=correlateFindings(report.scan,report);
@@ -106,6 +115,8 @@ export function formatReport(r){
   for(const t of r.tests){rows.push(`| ${t.index} | ${t.step.action} | ${String(t.step.selector||'').replaceAll('|','\\|')} | ${t.status} | ${String(t.error||((t.result?.actual!=null)?`actual=${t.result.actual}, expected=${t.result.expected}`:'')).replaceAll('|','\\|').slice(0,140)} |`);}
   rows.push('','## Visual findings','');
   for(const issue of r.visual?.issues||[])rows.push(`- **${issue.verdict}** ${issue.type} on \`${issue.selector}\`: ${JSON.stringify(issue.detail)}${issue.cssEvidence?.rules?.[0]?.url?` (style: ${issue.cssEvidence.rules[0].url})`:''}`);
+  rows.push('','## Responsive viewport matrix','');
+  for(const v of r.visualByViewport||[])rows.push(`- ${v.width}×${v.height}: ${v.error||((v.audit?.issues||[]).length+' visual candidate findings')}`);
   rows.push('','## Code location candidates (unconfirmed)','');
   for(const f of r.codeCandidates?.functional||[])rows.push(`- Functional test ${f.testIndex}: ${f.candidates.map(c=>c.file+':'+c.line).join(', ')||'no source candidate'} — **not confirmed root cause**`);
   for(const v of r.codeCandidates?.visual||[])if(v.candidates.length)rows.push(`- Visual ${v.issue} (${v.selector}): ${v.candidates.map(c=>c.file+':'+c.line).join(', ')} — **not confirmed root cause**`);

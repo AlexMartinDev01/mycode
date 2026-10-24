@@ -62,6 +62,8 @@ node src/cli.js run --project /path/to/frontend --spec examples/qa.spec.json --o
 
 Start your front-end test server yourself (e.g. `npm run dev -- --host 127.0.0.1`) and point the spec's `url` at it. **Browser navigation defaults to localhost-only**. External targets require explicit `allowExternal: true`. Avoid destructive test accounts/actions.
 
+The optional `viewports` spec field accepts up to 12 `{width,height}` objects and performs responsive visual audits at each size after the functional steps. This is geometry-based responsive probing, not a cross-browser visual oracle.
+
 Supported spec steps: `navigate`, `viewport`, `click`, `fill`, `wait`, `inspect`, `expectText`, `expectValue`, `expectVisible`, `expectUrl`, `expectStyle`, `expectNumber`, `css`, `visual`, `screenshot`, `visualBaseline`. `visualBaseline` needs a previously reviewed PNG baseline, captured at identical viewport, DPR, fonts, animations and data state. It measures changed pixels, not semantic intent.
 
 Test reports live in output directory (`report.json`, `report.md`) with explicit PASS, FAIL, SUSPECT and UNKNOWN statuses. `codeCandidates` contains only potentially relevant lines; it never claims they are the confirmed root cause.
