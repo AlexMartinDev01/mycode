@@ -4,6 +4,7 @@ import { scanProject } from './scanner.js';
 import { ChromiumDriver } from './browser.js';
 import { executeStep,runScenario } from './engine.js';
 import { auditVisual,enrichVisualFindings } from './visual.js';
+import { explorePage } from './explorer.js';
 
 export const name='dsh-autonomous-frontend-qa';
 export const inject=['tools'];
@@ -44,6 +45,15 @@ export function apply(ctx) {
     async execute(args){return bounded(async()=>{
       const b=sessions.get(args.session);if(!b)throw new Error('Unknown browser session');const report=await auditVisual(b);
       if(args.cssEvidence)await enrichVisualFindings(b,report.issues);return report;
+    });},
+  });
+  register({
+    name:'frontend_qa_explore',description:'Discover visible interactable elements and safely classify their potential side effects; optionally execute bounded, potentially safe clicks in a disposable environment, recording DOM and runtime effects. Observations are UNKNOWN without independent business rules.',
+    parameters:{session:{type:'string',required:true},executeSafeClicks:{type:'boolean'},acknowledgeTestEnvironment:{type:'boolean',description:'Required true to execute autonomous clicks: user authorizes disposable environment'},maxActions:{type:'number'}},output:jsonOut,
+    async execute(args){return bounded(async()=>{
+      const b=sessions.get(args.session);if(!b)throw new Error('Unknown browser session');
+      if(args.executeSafeClicks&&!args.acknowledgeTestEnvironment)throw new Error('Autonomous clicks require acknowledgeTestEnvironment=true');
+      return explorePage(b,{executeSafeClicks:args.executeSafeClicks===true,maxActions:Math.min(50,Math.max(1,args.maxActions||20))});
     });},
   });
   register({

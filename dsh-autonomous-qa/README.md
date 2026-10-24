@@ -36,6 +36,7 @@ If you installed the package through a DSH bundle command, restart the `web` pro
 | `frontend_qa_start_browser` | Start own Chromium/CDP controller and return handle |
 | `frontend_qa_action` | Deterministic navigate/click/fill/inspect/assert/screenshot/CSS trace actions |
 | `frontend_qa_visual_audit` | Find obstructed controls, overflow, clipping, broken images, low-contrast candidates |
+| `frontend_qa_explore` | Discover interactive controls and optionally execute bounded low-risk interactions in authorized disposable environment |
 | `frontend_qa_close_browser` | Free Chromium resources |
 | `frontend_qa_run_suite` | Source scan + sequential browser actions + visual audit + JSON/Markdown report |
 
@@ -46,7 +47,8 @@ Sample DSH flow:
 3. Call `frontend_qa_start_browser` and record the returned `session`.
 4. Call `frontend_qa_action` with `stepJson`: `{"action":"navigate","url":"http://localhost:5173"}` followed by `{"action":"click","selector":"#submit"}`, `{"action":"expectText","selector":"#result","equals":"Success"}`.
 5. Call `frontend_qa_visual_audit` with `cssEvidence:true` and use `frontend_qa_action` with `{"action":"css","selector":"#result"}` for extra CSS evidence.
-6. Close with `frontend_qa_close_browser`.
+6. Optionally call `frontend_qa_explore` with `executeSafeClicks:false` for safe discovery; execution requires explicit `acknowledgeTestEnvironment:true`.
+7. Close with `frontend_qa_close_browser`.
 
 This plugin exposes tools to the DSH reasoning loop; it does **not** invent correct expected values and does not directly replace the DSH model's reasoning. It can also run a repeatable spec in one call.
 

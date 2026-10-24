@@ -92,3 +92,44 @@ test('full workflow generates auditable JSON and Markdown without claiming 100% 
     assert.ok(obj.limitations.some(s=>s.includes('root-cause')));
   }finally{await fs.rm(tmp,{recursive:true,force:true});}
 });
+
+test('source correlation supplies accurate candidates without inventing proven root cause',async()=>{
+  const {correlateFindings}=await import('../src/diagnostics.js');
+  const g=scanProject(fixture);
+  const r=correlateFindings(g,{
+    tests:[{index:0,status:'FAIL',step:{selector:'#total'},result:{actual:103}}],
+    visual:{issues:[{type:'interactive-obstructed',selector:'#buy',detail:{hit:'#overlay'}}]}
+  });
+  assert.ok(r.functional[0].candidates.some(x=>x.file==='src/app.js'&&x.line===5));
+  assert.ok(r.visual[0].candidates.some(x=>x.file==='src/style.css'&&x.selector==='#overlay'&&x.line===4));
+  assert.equal(r.functional[0].rootCauseStatus,'NOT_CONFIRMED');
+});
+
+test('DSH plugin contract registers autonomous tools (mocked host)',async()=>{
+  const {pathToFileURL}=await import('node:url');
+  const source=await fs.readFile(path.join(root,'src/plugin.js'),'utf8');
+  const mockPath=path.join(root,'src/.plugin-contract-test.mjs');
+  const mock=source.replace("import { defineTool } from '@deepseek-ai/dsh-tools';",'const defineTool = x=>x;');
+  await fs.writeFile(mockPath,mock);
+  try{
+    const p=await import(pathToFileURL(mockPath)+'?'+Date.now());
+    const tools=[],cleanups=[];
+    p.apply({tools:{register:t=>tools.push(t)},effect:f=>cleanups.push(f())});
+    assert.equal(tools.length,7);
+    for(const name of ['frontend_qa_scan','frontend_qa_action','frontend_qa_visual_audit','frontend_qa_run_suite'])assert.ok(tools.some(t=>t.name===name));
+    const result=JSON.parse(await tools.find(t=>t.name==='frontend_qa_scan').execute({projectRoot:fixture}));
+    assert.equal(result.summary.imports,2);
+    for(const c of cleanups)c();
+  }finally{await fs.rm(mockPath,{force:true});}
+});
+
+
+test('autonomous explorer discovers controls but does not claim unverified correctness',async()=>{
+  const {explorePage}=await import('../src/explorer.js');
+  const b=new ChromiumDriver();
+  try {await b.start();await loadFixture(b);const d=await explorePage(b,{executeSafeClicks:false});
+    assert.ok(d.actions.some(x=>x.selector==='#buy'));
+    assert.equal(d.executed,0);
+    assert.equal(d.actions.find(x=>x.selector==='#buy').execution,'NOT_TESTED');
+  }finally{await b.stop();}
+});
