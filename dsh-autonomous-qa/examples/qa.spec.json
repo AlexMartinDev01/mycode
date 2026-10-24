@@ -1,0 +1,10 @@
+{
+  "url":"http://127.0.0.1:8765/fixtures/buggy-app/index.html",
+  "autoVisual":true,
+  "steps":[
+    {"action":"inspect","selector":"#buy"},
+    {"action":"click","selector":"#buy"},
+    {"action":"expectNumber","selector":"#total","equals":300},
+    {"action":"visual","cssEvidence":true}
+  ]
+}

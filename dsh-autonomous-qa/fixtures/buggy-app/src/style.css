@@ -1,0 +1,5 @@
+body {font-family:Arial,sans-serif;margin:18px;background:white;color:#333}
+#panel {width:340px;padding:20px;border:1px solid #ddd}
+button {padding:12px;background:#2563eb;color:white;border:0;cursor:pointer}
+#overlay {position:fixed;left:0;top:0;width:100vw;height:160px;background:#fafafa;z-index:100;opacity:0.95}
+#buy {position:absolute;top:32px;left:32px}
