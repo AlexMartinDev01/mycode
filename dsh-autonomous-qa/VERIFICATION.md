@@ -30,7 +30,7 @@ Executed in sandbox: `npm test` (Node v22.16.0, system Chromium with sandbox-man
 
 ## v0.3.0 (2026-10-25) — new tag-combination checks
 
-`npm test`: **33 passed, 0 failed** in local isolated environment. In addition to the original 24 checks:
+`npm test`: **34 passed, 0 failed** in local isolated environment. In addition to the original 24 checks:
 - Vue template nesting, exact source lines, `v-model`/`v-if`/`v-show`/event indexing and an imported handler link.
 - React JSX conditional ancestors, events, component import edges and source positions.
 - HTML tag tokenization with quoted `>` content and exclusion of raw script content.
@@ -38,5 +38,6 @@ Executed in sandbox: `npm test` (Node v22.16.0, system Chromium with sandbox-man
 - Authorized disposable environment and localhost-only policy; no independent oracle causes UNKNOWN rather than a false PASS.
 - Real Chromium in-memory form testing generated input combinations and identifying a deliberately wrong addition-versus-multiplication business calculation.
 - Action-only buttons, Vue nested `<template>` blocks, and assertion-injection rejection.
+- Real Chromium action-only click combinations find an incorrect hidden-panel transition while also checking layout.
 
 **Not tested:** actual DSH installation, live localhost-navigation suite, exhaustive JSX/Vue syntactic dialects, complete cross-file reactive dataflow, full state-machine coverage, 100% defect detection, or causal proof of unique defective source lines.

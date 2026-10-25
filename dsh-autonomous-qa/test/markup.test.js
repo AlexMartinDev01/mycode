@@ -99,3 +99,24 @@ test('Combination contract disallows navigation and other action injection as as
   const root=await fixture(t),group=planTagCombinations(buildMarkupIndex(root)).groups[0];
   await assert.rejects(()=>runCombinationCases({},group,{reset:async()=>{},acknowledgeDisposableEnvironment:true,rules:[{when:{},assertions:[{action:'navigate',url:'https://example.com'}]}]}),/read-only/);
 });
+test('Real browser action-only tag combinations catch incorrect click-dependent visibility and check layout',async t=>{
+  const root=await fixture(t);
+  await fs.writeFile(path.join(root,'only.html'),'<button id="toggle" onclick="toggle()">Toggle</button><div id="panel">Panel</div>');
+  const group=planTagCombinations(buildMarkupIndex(root),{file:'only.html'}).groups[0];
+  const browser=new ChromiumDriver();
+  try{
+    await browser.start();
+    const reset=async b=>{
+      const id=(await b.cdp.command('Page.getFrameTree')).frameTree.frame.id;
+      await b.cdp.command('Page.setDocumentContent',{frameId:id,html:'<button id="toggle" onclick="void(0)">Toggle</button><div id="panel" hidden>Panel</div>'});
+    };
+    const rules=[
+      {when:{'#toggle':'idle'},assertions:[{action:'expectAttribute',selector:'#panel',attribute:'hidden',equals:''}]},
+      {when:{'#toggle':'activate'},assertions:[{action:'expectAttribute',selector:'#panel',attribute:'hidden',equals:null},{action:'expectLayout',selector:'#toggle',insideViewport:true}]}
+    ];
+    const result=await runCombinationCases(browser,group,{reset,rules,acknowledgeDisposableEnvironment:true});
+    assert.equal(result.summary.passed,1);
+    assert.equal(result.summary.failed,1);
+    assert.equal(result.summary.unknown,0);
+  }finally{await browser.stop();}
+});
