@@ -121,3 +121,11 @@ test('step-level external navigation flag cannot override browser policy',async(
   b.options.allowExternal=true;
   assert.equal((await executeStep(b,{action:'navigate',url:'https://example.com',allowExternal:true})).allowExternal,true);
 });
+test('cross-file argument mapping links caller expressions to callee parameters and return evidence',()=>{
+  const idx=buildSemanticIndex(fixture);
+  const p=idx.links.find(x=>x.to==='src/pricing.js#calculateTotal');
+  assert.deepEqual(p.argumentMappings.map(m=>[m.parameter,m.argument]),[['price','price'],['quantity','quantity']]);
+  const calc=idx.symbols.find(x=>x.key==='src/pricing.js#calculateTotal');
+  assert.equal(calc.returns[0].expression,'price + quantity');
+  assert.equal(calc.returns[0].line,2);
+});

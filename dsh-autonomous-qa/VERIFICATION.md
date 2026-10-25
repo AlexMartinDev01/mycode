@@ -4,7 +4,7 @@
 
 Executed in sandbox: `npm test` (Node v22.16.0, system Chromium with sandbox-managed URL policy).
 
-**23 passed; 0 failed**, including all 11 previous checks and 12 new checks. This is a test-suite result, NOT full application coverage or DSH host acceptance.
+**24 passed; 0 failed**, including all 11 previous checks and 13 new checks. This is a test-suite result, NOT full application coverage or DSH host acceptance.
 
 ## New exercised scenarios
 
@@ -19,6 +19,7 @@ Executed in sandbox: `npm test` (Node v22.16.0, system Chromium with sandbox-man
 - Real Chromium geometry contract detects overlap and emits CSS evidence.
 - Real engine `runScenario` from in-memory HTML: 2 assertions FAIL, visual issue SUSPECT, report artifacts emitted. Expected failing known-defect scenarios count as passing detector tests.
 - Browser session policy blocks a step-level attempt to enable external browsing.
+- Cross-file parameter-to-argument mapping and direct return expression/source line evidence, explicitly non-causal.
 
 ## Explicit gaps
 

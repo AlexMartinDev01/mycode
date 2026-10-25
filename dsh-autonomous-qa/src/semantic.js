@@ -41,7 +41,9 @@ export function buildSemanticIndex(projectRoot){
     const bindings={},exports=[],locals=[],callsHere=[];
     function pos(n){return source.getLineAndCharacterOfPosition(n.getStart(source)).line+1;}
     function addSymbol(name,node){if(!name)return;
-      const s={file,name,line:pos(node),endLine:source.getLineAndCharacterOfPosition(node.end).line+1,key:`${file}#${name}`};
+      const callable=ts.isVariableDeclaration(node)?node.initializer:node;
+      const params=callable?.parameters?.map(p=>p.name.getText(source))||[];
+      const s={file,name,line:pos(node),endLine:source.getLineAndCharacterOfPosition(node.end).line+1,key:`${file}#${name}`,parameters:params,returns:[]};
       symbols.push(s);locals.push(s);symbolByKey.set(s.key,s);
     }
     function walk(node,scope=null){
@@ -62,10 +64,11 @@ export function buildSemanticIndex(projectRoot){
         if(!target&&specifier.startsWith('.'))unresolved.push({file,line:pos(node),specifier,reason:'not resolved inside scan'});
       }
       if(ts.isExportDeclaration(node)&&node.moduleSpecifier&&ts.isStringLiteral(node.moduleSpecifier))exports.push({kind:'reexport',specifier:node.moduleSpecifier.text,line:pos(node)});
+      if(ts.isReturnStatement(node)&&scope){const target=symbolByKey.get(`${file}#${scope}`);if(target)target.returns.push({line:pos(node),expression:node.expression?.getText(source).slice(0,200)||''});}
       if(ts.isCallExpression(node)){
         const exp=node.expression;
         const callee=exp.getText(source);
-        const call={file,line:pos(node),caller:scope||'<module>',callee,kind:'unknown',target:null,targetSymbol:null};
+        const call={file,line:pos(node),caller:scope||'<module>',callee,arguments:node.arguments.map(arg=>arg.getText(source).slice(0,150)),kind:'unknown',target:null,targetSymbol:null};
         if(ts.isIdentifier(exp))call.identifier=exp.text;
         else if(ts.isPropertyAccessExpression(exp)&&ts.isIdentifier(exp.expression)){call.receiver=exp.expression.text;call.method=exp.name.text;}
         calls.push(call);callsHere.push(call);
@@ -97,7 +100,9 @@ export function buildSemanticIndex(projectRoot){
     call.kind=kind;
     if(target&&symbolByKey.has(target)){
       call.target=target.split('#')[0];call.targetSymbol=target.split('#')[1];call.targetLine=symbolByKey.get(target).line;
-      links.push({from:`${call.file}#${call.caller}`,to:target,file:call.file,line:call.line,kind});
+      const callee=symbolByKey.get(target);
+      const argumentMappings=(callee.parameters||[]).map((parameter,i)=>({parameter,argument:call.arguments[i]??null,sourceFile:call.file,callLine:call.line,targetFile:callee.file,parameterDeclarationLine:callee.line}));
+      links.push({from:`${call.file}#${call.caller}`,to:target,file:call.file,line:call.line,kind,argumentMappings});
     } else if(target){unresolved.push({file:call.file,line:call.line,callee:call.callee,reason:'target symbol not indexed'});}
   }
   return {

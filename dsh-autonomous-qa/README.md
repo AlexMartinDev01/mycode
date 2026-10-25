@@ -75,7 +75,7 @@ Test reports live in output directory (`report.json`, `report.md`) with explicit
 npm test
 ```
 
-23 tests include bounded cross-file named-function linkage, path aliases, Vue line preservation, independent derived business formulas and layout assertions, fixture cross-file imports, Chromium mouse and keyboard interaction, calculation defect detection, overlay obstruction, CSS trace, screenshot regression, safety guards and report generation. **Note:** the isolated CI-like environment where this project was initially built includes a forced Chromium policy `URLBlocklist:["*"]`; therefore in-browser tests inject HTML into `about:blank` and the URL navigation integration test verifies truthful fatal-error reporting. Full localhost navigation and actual plugin loading must be checked on a normal DSH installation.
+24 tests include bounded cross-file named-function linkage, path aliases, Vue line preservation, independent derived business formulas and layout assertions, fixture cross-file imports, Chromium mouse and keyboard interaction, calculation defect detection, overlay obstruction, CSS trace, screenshot regression, safety guards and report generation. **Note:** the isolated CI-like environment where this project was initially built includes a forced Chromium policy `URLBlocklist:["*"]`; therefore in-browser tests inject HTML into `about:blank` and the URL navigation integration test verifies truthful fatal-error reporting. Full localhost navigation and actual plugin loading must be checked on a normal DSH installation.
 
 ## Current limitations / next engineering stages
 
@@ -98,7 +98,7 @@ The scanner excludes symlink traversal, `.env` files, `node_modules`, and genera
 
 ## v0.2.0 verified improvements (2026-10-25)
 
-- New `src/semantic.js` builds a **bounded, direct function-call link graph** with source-file and line evidence across modules. Supports TS/JS aliases, basic Vue `<script setup>` and module-level callers. The graph explicitly reports incomplete resolution, not complete state/dataflow analysis.
+- New `src/semantic.js` builds a **bounded, direct function-call link graph** with conservative parameter-to-argument and return-expression evidence with source-file and line evidence across modules. Supports TS/JS aliases, basic Vue `<script setup>` and module-level callers. The graph explicitly reports incomplete resolution, not complete state/dataflow analysis.
 - New `frontend_qa_trace` lets DSH inspect the graph for a specific file + function, without reading the entire model-facing project index.
 - New **independent derived oracle** step: `expectDerived`, with an approved calculation contract (`add`, `subtract`, `multiply`, `divide`, `min`, `max`). A missing operand returns `UNKNOWN`, not PASS. `factor`, `offset`, and `tolerance` are optional.
 - New `expectLayout` checks declared width/height, viewport inclusion, relative overlap/alignment and attaches matched live CSS rules on failures. Layout checks are only as valid as the independent contract.
