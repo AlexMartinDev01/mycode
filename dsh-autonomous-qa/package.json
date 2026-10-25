@@ -1,10 +1,10 @@
 {
   "name": "dsh-autonomous-frontend-qa",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "DSH-native source-aware functional and visual QA, direct Chromium CDP control",
   "type": "module",
   "main": "./index.js",
-  "exports": {".": "./index.js", "./engine": "./src/engine.js", "./scanner": "./src/scanner.js", "./browser": "./src/browser.js"},
+  "exports": {".": "./index.js", "./engine": "./src/engine.js", "./scanner": "./src/scanner.js", "./browser": "./src/browser.js", "./semantic": "./src/semantic.js"},
   "files": ["index.js", "src", "cordis.patch.yml", "README.md", "LICENSE"],
   "dsh": {"bundle": {"patch": "./cordis.patch.yml"}},
   "peerDependencies": {"@deepseek-ai/dsh-tools": "*"},

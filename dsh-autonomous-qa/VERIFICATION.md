@@ -1,40 +1,29 @@
-# Verification record — 2026-10-25
+# v0.2.0 validation record — 2026-10-25
 
-## Scope
+## Commands and outcome
 
-This is an experimental DSH plugin implementation, not an audited full QA replacement. All claims below refer to the specific automated checks run in the isolated authoring environment.
+Executed in sandbox: `npm test` (Node v22.16.0, system Chromium with sandbox-managed URL policy).
 
-## Command
+**23 passed; 0 failed**, including all 11 previous checks and 12 new checks. This is a test-suite result, NOT full application coverage or DSH host acceptance.
 
-`node --test test/engine.test.js`
+## New exercised scenarios
 
-Result: **11 passed, 0 failed** (final run).
+- Bounded cross-module direct-function call path: `src/app.js` → `src/state.js` → `src/pricing.js` and source line evidence.
+- Renamed TypeScript imports and `tsconfig.json` path aliases.
+- Vue SFC `<script setup>` function lines and intra-file direct calls.
+- Real Chromium in-memory DOM: independent multiplication rule exposes wrong 103 vs expected 300 and passes after simulated correction.
+- Missing value yields `UNKNOWN` (not false PASS); unsupported math op fails closed.
+- DOM attribute/count assertions, network-observation assertion with known recorded evidence.
+- Cross-file source candidate path explicitly marked `NOT_CONFIRMED`.
+- CSS overlay selector mapped to original stylesheet declaration line candidate.
+- Real Chromium geometry contract detects overlap and emits CSS evidence.
+- Real engine `runScenario` from in-memory HTML: 2 assertions FAIL, visual issue SUSPECT, report artifacts emitted. Expected failing known-defect scenarios count as passing detector tests.
+- Browser session policy blocks a step-level attempt to enable external browsing.
 
-Validated tests:
-1. All test fixture files indexed, cross-file imports traced with source lines.
-2. Scanner skips symlinks and outside files.
-3. Browser navigation rejects non-local URLs by default.
-4. Real Chromium CDP keyboard and mouse interactions detect deliberately wrong total (103 instead of 300) involving three modules.
-5. CDP hit testing flags intentionally obstructed button and retrieves matching CSS rules.
-6. Screenshot pixel comparison distinguishes an unchanged render from a color change.
-7. Test runner produces JSON and Markdown evidence and truthfully records browser-policy navigation failure.
-8. Candidate original code locations are presented as **NOT_CONFIRMED** rather than proven root causes.
-9. DSH plugin tool registrations invoke correctly under a mocked tool registry (`defineTool` stub), **not** under a live DSH host.
-10. Bounded autonomous control discovery does not equate untested controls with PASS.
-11. Responsive probe flags overflow at narrow viewport. During development, this test uncovered a detector bug: `window.innerWidth` can reflect horizontal overflow; detector was corrected to use `document.documentElement.clientWidth`.
+## Explicit gaps
 
-## Environment caveat
-
-This environment's managed Chromium has the enforced policy `URLBlocklist: ["*"]` even for localhost. Direct navigation was blocked (`net::ERR_BLOCKED_BY_ADMINISTRATOR`), so real-browser interaction tests inject fixtures with CDP `Page.setDocumentContent` into `about:blank`. Therefore a complete external/local running front-end project navigation test has **not** passed here. No live DSH host binary or production compatibility check was available.
-
-## Explicitly not verified
-
-- Startup and registration in a user-installed DSH runtime; supported DSH version interval.
-- Real Vue/React app with bundler, sourcemaps and live API.
-- Exact causal original-code line attribution; current output is candidate locations and matched browser CSS rules.
-- Complete business correctness without independent specifications and API oracle.
-- Full interactive state-machine coverage, dangerous control handling, auth, persistence.
-- Cross-browser (Firefox and Safari), automated screenshot baselines for all states, Figma comparison.
-- Large project scaling, flaky behavior, false-positive rates and independent blind mutation benchmark.
-
-A comprehensive QA replacement would require a separate benchmark and production-shape integration tests before an availability claim.
+- Browser/DSH installed host integration has NOT been exercised. The tool-registration smoke test uses a mocked DSH host.
+- Chromium has an enforced URLBlocklist in this environment; in-memory `Page.setDocumentContent` is used for positive browser integration. Live localhost navigation remains unverified and the navigation failure path is tested.
+- A direct-call semantic index is not whole-program dataflow, asynchronous side-effect analysis, or proof of a uniquely causal root line.
+- Visual heuristic issues require independent expected layout/design rules. No complete pixel-accurate Figma or semantic aesthetic oracle.
+- No standalone Firefox/Safari, enterprise safety boundary, 100% defect detection, or guaranteed human tester replacement.

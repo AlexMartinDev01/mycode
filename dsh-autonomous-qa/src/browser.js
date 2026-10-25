@@ -50,7 +50,7 @@ export class CdpConnection extends EventEmitter {
 }
 
 export class ChromiumDriver {
-  constructor(options={}) {this.options=options;this.logs={exceptions:[],console:[],network:[]};this.cssHeaders=new Map();this.ready=false;this.child=null;this.cdp=null;}
+  constructor(options={}) {this.options=options;this.logs={exceptions:[],console:[],network:[]};this.cssHeaders=new Map();this.requestInfo=new Map();this.ready=false;this.child=null;this.cdp=null;}
   async start() {
     const port=await freePort();this.port=port;
     this.tempDir=await fs.mkdtemp(path.join(os.tmpdir(),'dsh-qa-'));
@@ -72,7 +72,8 @@ export class ChromiumDriver {
       this.cdp=await CdpConnection.connect(page.webSocketDebuggerUrl);
       this.cdp.on('Runtime.exceptionThrown',e=>this.logs.exceptions.push({text:e.exceptionDetails?.text,line:e.exceptionDetails?.lineNumber,url:e.exceptionDetails?.url,stack:e.exceptionDetails?.stackTrace?.callFrames}));
       this.cdp.on('Runtime.consoleAPICalled',e=>{if(['error','warning','assert'].includes(e.type))this.logs.console.push({type:e.type,args:e.args?.map(x=>x.value??x.description)});});
-      this.cdp.on('Network.responseReceived',e=>{this.logs.network.push({url:e.response?.url,status:e.response?.status,method:'RESPONSE'});});
+      this.cdp.on('Network.requestWillBeSent',e=>{this.requestInfo.set(e.requestId,{url:e.request?.url,method:e.request?.method});if(this.requestInfo.size>1000)this.requestInfo.delete(this.requestInfo.keys().next().value);});
+      this.cdp.on('Network.responseReceived',e=>{const req=this.requestInfo.get(e.requestId)||{};this.logs.network.push({url:e.response?.url,status:e.response?.status,httpMethod:req.method||null,method:'RESPONSE'});if(this.logs.network.length>1000)this.logs.network.shift();});
       this.cdp.on('Network.loadingFailed',e=>{this.logs.network.push({url:e.requestId,error:e.errorText,method:'FAILED'});});
       this.cdp.on('CSS.styleSheetAdded',e=>{this.cssHeaders.set(e.header.styleSheetId,e.header);});
       await Promise.all(['Page.enable','Runtime.enable','Network.enable','DOM.enable','CSS.enable'].map(x=>this.cdp.command(x)));
@@ -139,7 +140,7 @@ export class ChromiumDriver {
     const rules=[];
     for(const match of style.matchedCSSRules||[]) {
       const r=match.rule,h=this.cssHeaders.get(r.styleSheetId);
-      rules.push({selector:r.selectorList?.text||'',origin:r.origin,url:h?.sourceURL||null,line:r.style?.range?.startLine!=null?r.style.range.startLine+1:null,declarations:r.style?.cssProperties?.filter(p=>!p.disabled).map(p=>({name:p.name,value:p.value}))||[]});
+      rules.push({selector:r.selectorList?.text||'',origin:r.origin,url:h?.sourceURL||null,line:r.style?.range?.startLine!=null?r.style.range.startLine+1:null,selectorLine:r.selectorList?.selectors?.[0]?.range?.startLine!=null?r.selectorList.selectors[0].range.startLine+1:null,declarations:r.style?.cssProperties?.filter(p=>!p.disabled).map(p=>({name:p.name,value:p.value}))||[]});
     }
     return {selector,matched:true,rules};
   }

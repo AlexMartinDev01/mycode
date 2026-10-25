@@ -115,10 +115,11 @@ test('DSH plugin contract registers autonomous tools (mocked host)',async()=>{
     const p=await import(pathToFileURL(mockPath)+'?'+Date.now());
     const tools=[],cleanups=[];
     p.apply({tools:{register:t=>tools.push(t)},effect:f=>cleanups.push(f())});
-    assert.equal(tools.length,7);
-    for(const name of ['frontend_qa_scan','frontend_qa_action','frontend_qa_visual_audit','frontend_qa_run_suite'])assert.ok(tools.some(t=>t.name===name));
+    assert.equal(tools.length,8);
+    for(const name of ['frontend_qa_scan','frontend_qa_action','frontend_qa_visual_audit','frontend_qa_run_suite','frontend_qa_trace'])assert.ok(tools.some(t=>t.name===name));
     const result=JSON.parse(await tools.find(t=>t.name==='frontend_qa_scan').execute({projectRoot:fixture}));
-    assert.equal(result.summary.imports,2);
+    assert.equal(result.scan.summary.imports,2);
+    assert.equal(result.semantic.summary.resolvedCalls,2);
     for(const c of cleanups)c();
   }finally{await fs.rm(mockPath,{force:true});}
 });

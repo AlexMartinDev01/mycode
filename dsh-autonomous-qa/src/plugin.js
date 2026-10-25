@@ -1,6 +1,7 @@
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import path from 'node:path';
 import { scanProject } from './scanner.js';
+import { buildSemanticIndex, traceCalls } from './semantic.js';
 import { ChromiumDriver } from './browser.js';
 import { executeStep,runScenario } from './engine.js';
 import { auditVisual,enrichVisualFindings } from './visual.js';
@@ -20,7 +21,15 @@ export function apply(ctx) {
   register({
     name:'frontend_qa_scan',description:'Read every supported front-end file and build a cross-file import, functions, event, and CSS rule index with original file and line references. Returns a JSON index (may be large). Does not claim code correctness.',
     parameters:{projectRoot:{type:'string',required:true,description:'Absolute path to authorized project'}},output:jsonOut,
-    async execute(args){return bounded(async()=>scanProject(path.resolve(args.projectRoot)));},
+    async execute(args){return bounded(async()=>{const root=path.resolve(args.projectRoot);return {scan:scanProject(root),semantic:buildSemanticIndex(root)};});},
+  });
+  register({
+    name:'frontend_qa_trace',description:'Trace statically resolved cross-file direct function calls from one file and symbol. Includes exact call sites and unresolved limitations, never claims full runtime dataflow.',
+    parameters:{projectRoot:{type:'string',required:true},file:{type:'string',required:true,description:'Relative source file, for example src/state.js'},symbol:{type:'string',required:true,description:'Named function, or <module> for top-level calls'},maxDepth:{type:'number'}},output:jsonOut,
+    async execute(args){return bounded(async()=>{
+      const index=buildSemanticIndex(path.resolve(args.projectRoot));
+      return {summary:index.summary,trace:traceCalls(index,{file:args.file,symbol:args.symbol,maxDepth:Math.min(10,Math.max(1,args.maxDepth??6))})};
+    });},
   });
   register({
     name:'frontend_qa_start_browser',description:'Start a DSH-controlled real Chromium browser via a custom CDP driver. Defaults to localhost-only. Returns handle for autonomous browser test tools.',
@@ -36,7 +45,7 @@ export function apply(ctx) {
     parameters:{session:{type:'string',required:true},stepJson:{type:'string',required:true,description:'JSON step: {"action":"click","selector":"#submit"} or {"action":"expectText","selector":"#total","equals":"300"}'},outputDir:{type:'string'}},output:jsonOut,
     async execute(args){return bounded(async()=>{
       const b=sessions.get(args.session);if(!b)throw new Error('Unknown browser session');
-      const step=JSON.parse(args.stepJson);const result=await executeStep(b,step,{outputDir:args.outputDir});return {ok:true,result};
+      const step=JSON.parse(args.stepJson);const result=await executeStep(b,step,{outputDir:args.outputDir});return {ok:result?.pass!==false,result,verdict:typeof result?.pass==='boolean'?(result.pass?'PASS':'FAIL'):(result?.pass===null?'UNKNOWN':'OBSERVED')};
     });},
   });
   register({
@@ -66,7 +75,7 @@ export function apply(ctx) {
     parameters:{projectRoot:{type:'string',required:true},specJson:{type:'string',required:true,description:'JSON: {url,steps:[{action,selector,...}],autoVisual:true}'},outputDir:{type:'string'},allowExternal:{type:'boolean'}},output:jsonOut,
     async execute(args){return bounded(async()=>{
       const spec=JSON.parse(args.specJson);const report=await runScenario({...spec,projectRoot:path.resolve(args.projectRoot),outputDir:args.outputDir||spec.outputDir,allowExternal:args.allowExternal===true});
-      return {ok:!report.fatalError,summary:report.summary,outputs:report.outputs,fatal:report.fatalError||null,tests:report.tests,visualFindings:report.visual?.issues||[],runtimeErrors:report.logs.exceptions};
+      return {ok:!report.fatalError,summary:report.summary,semanticSummary:report.semantic?.summary,outputs:report.outputs,fatal:report.fatalError||null,tests:report.tests,visualFindings:report.visual?.issues||[],runtimeErrors:report.logs.exceptions};
     });},
   });
   ctx.effect(()=>()=>{for(const b of sessions.values())void b.stop();sessions.clear();});
