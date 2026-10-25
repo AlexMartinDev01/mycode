@@ -115,8 +115,8 @@ test('DSH plugin contract registers autonomous tools (mocked host)',async()=>{
     const p=await import(pathToFileURL(mockPath)+'?'+Date.now());
     const tools=[],cleanups=[];
     p.apply({tools:{register:t=>tools.push(t)},effect:f=>cleanups.push(f())});
-    assert.equal(tools.length,11);
-    for(const name of ['frontend_qa_scan','frontend_qa_action','frontend_qa_visual_audit','frontend_qa_run_suite','frontend_qa_trace','frontend_qa_markup','frontend_qa_plan_combinations','frontend_qa_test_combinations'])assert.ok(tools.some(t=>t.name===name));
+    assert.equal(tools.length,15);
+    for(const name of ['frontend_qa_scan','frontend_qa_action','frontend_qa_visual_audit','frontend_qa_run_suite','frontend_qa_trace','frontend_qa_markup','frontend_qa_plan_combinations','frontend_qa_test_combinations','frontend_qa_plan_algorithmic','frontend_qa_plan_model_paths','frontend_qa_rank_fault_candidates','frontend_qa_compare_algorithms'])assert.ok(tools.some(t=>t.name===name));
     const result=JSON.parse(await tools.find(t=>t.name==='frontend_qa_scan').execute({projectRoot:fixture}));
     assert.equal(result.scan.summary.imports,2);
     assert.equal(result.semantic.summary.resolvedCalls,2);

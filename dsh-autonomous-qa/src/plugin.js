@@ -8,6 +8,8 @@ import { auditVisual,enrichVisualFindings } from './visual.js';
 import { explorePage } from './explorer.js';
 import { buildMarkupIndex,planTagCombinations } from './markup.js';
 import { runCombinationCases } from './combination-runtime.js';
+import {planAlgorithmicTagCombinations,planModelTransitions,rankFaultCandidates} from './algorithms.js';
+import {runComparison} from './benchmark.js';
 
 export const name='dsh-autonomous-frontend-qa';
 export const inject=['tools'];
@@ -37,8 +39,28 @@ export function apply(ctx) {
   });
   register({
     name:'frontend_qa_test_combinations',description:'Run independent-rule tag-combination tests in a disposable, localhost-only test environment, restoring state before each case. Requires explicit authorization and approved oracle rules. Does not infer expected behavior from source code.',
-    parameters:{session:{type:'string',required:true},projectRoot:{type:'string',required:true},group:{type:'string',required:true},pageUrl:{type:'string',required:true},submitSelector:{type:'string'},rulesJson:{type:'string',required:true},maxCases:{type:'number'},acknowledgeDisposableEnvironment:{type:'boolean',required:true}},output:jsonOut,
-    async execute(args){return bounded(async()=>{const browser=sessions.get(args.session);if(!browser)throw new Error('Unknown session');const plan=planTagCombinations(buildMarkupIndex(path.resolve(args.projectRoot)),{maxCases:args.maxCases});const group=plan.groups.find(g=>g.group===args.group);if(!group)throw new Error('Unknown combination group');return runCombinationCases(browser,group,{pageUrl:args.pageUrl,submitSelector:args.submitSelector,rules:JSON.parse(args.rulesJson),maxCases:args.maxCases,acknowledgeDisposableEnvironment:args.acknowledgeDisposableEnvironment});});}
+    parameters:{session:{type:'string',required:true},projectRoot:{type:'string',required:true},group:{type:'string',required:true},pageUrl:{type:'string',required:true},submitSelector:{type:'string'},rulesJson:{type:'string',required:true},maxCases:{type:'number'},strategy:{type:'string',description:'baseline or algorithm; algorithm uses explicit forbidden constraints'},constraintsJson:{type:'string'},seed:{type:'number'},acknowledgeDisposableEnvironment:{type:'boolean',required:true}},output:jsonOut,
+    async execute(args){return bounded(async()=>{const browser=sessions.get(args.session);if(!browser)throw new Error('Unknown session');const markup=buildMarkupIndex(path.resolve(args.projectRoot));const plan=args.strategy==='algorithm'?planAlgorithmicTagCombinations(markup,{maxCases:args.maxCases,constraintsByGroup:args.constraintsJson?JSON.parse(args.constraintsJson):{},seed:args.seed??11}):args.strategy===undefined||args.strategy==='baseline'?planTagCombinations(markup,{maxCases:args.maxCases}):(()=>{throw new Error('Unknown strategy')})();const group=plan.groups.find(g=>g.group===args.group);if(!group)throw new Error('Unknown combination group');return runCombinationCases(browser,group,{pageUrl:args.pageUrl,submitSelector:args.submitSelector,rules:JSON.parse(args.rulesJson),maxCases:args.maxCases,acknowledgeDisposableEnvironment:args.acknowledgeDisposableEnvironment});});}
+  });
+  register({
+    name:'frontend_qa_plan_algorithmic',description:'Generate risk-weighted, constraint-aware pairwise scenarios from source-derived tags. Provides coverage and explicit unknown oracles; plans do not execute and are not IPOG.',
+    parameters:{projectRoot:{type:'string',required:true},file:{type:'string'},maxCases:{type:'number'},constraintsJson:{type:'string',description:'JSON object group -> forbidden state rules'},seed:{type:'number'}},output:jsonOut,
+    async execute(args){return bounded(async()=>{const markup=buildMarkupIndex(path.resolve(args.projectRoot));return planAlgorithmicTagCombinations(markup,{file:args.file,maxCases:args.maxCases,constraintsByGroup:args.constraintsJson?JSON.parse(args.constraintsJson):{},seed:args.seed??11});});}
+  });
+  register({
+    name:'frontend_qa_plan_model_paths',description:'BFS transition/path coverage from a user-confirmed state-machine model, not proof of UI correctness.',
+    parameters:{modelJson:{type:'string',required:true},maxDepth:{type:'number'},maxSequences:{type:'number'}},output:jsonOut,
+    async execute(args){return bounded(async()=>planModelTransitions(JSON.parse(args.modelJson),{maxDepth:args.maxDepth,maxSequences:args.maxSequences}));}
+  });
+  register({
+    name:'frontend_qa_rank_fault_candidates',description:'Ochiai suspiciousness ranking from independently observed line coverage and pass/fail executions. NOT causal proof.',
+    parameters:{executionsJson:{type:'string',required:true}},output:jsonOut,
+    async execute(args){return bounded(async()=>rankFaultCandidates(JSON.parse(args.executionsJson)));}
+  });
+  register({
+    name:'frontend_qa_compare_algorithms',description:'Run reproducible baseline versus constrained covering-array comparison on bundled SYNTHETIC fault fixtures, equal case budgets. Not a real-project QA benchmark.',
+    parameters:{caseBudget:{type:'number'}},output:jsonOut,
+    async execute(args){return bounded(async()=>runComparison({budgetOverride:args.caseBudget??null}));}
   });
   register({
     name:'frontend_qa_trace',description:'Trace statically resolved cross-file direct function calls from one file and symbol. Includes exact call sites and unresolved limitations, never claims full runtime dataflow.',
@@ -98,3 +120,5 @@ export function apply(ctx) {
   ctx.effect(()=>()=>{for(const b of sessions.values())void b.stop();sessions.clear();});
 }
 let sessionCounter=0;
+
+// Algorithmic tools are registered by the main apply() function, not module initialization.

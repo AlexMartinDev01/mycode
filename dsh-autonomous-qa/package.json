@@ -1,16 +1,55 @@
 {
   "name": "dsh-autonomous-frontend-qa",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "DSH-native source-aware functional and visual QA, direct Chromium CDP control",
   "type": "module",
   "main": "./index.js",
-  "exports": {".": "./index.js", "./engine": "./src/engine.js", "./scanner": "./src/scanner.js", "./browser": "./src/browser.js", "./semantic": "./src/semantic.js", "./markup": "./src/markup.js", "./combination-runtime": "./src/combination-runtime.js"},
-  "files": ["index.js", "src", "cordis.patch.yml", "README.md", "LICENSE"],
-  "dsh": {"bundle": {"patch": "./cordis.patch.yml"}},
-  "peerDependencies": {"@deepseek-ai/dsh-tools": "*"},
-  "dependencies": {"typescript": "^5.8.3", "postcss": "^8.5.0"},
-  "engines": {"node": ">=22.19.0"},
-  "scripts": {"test":"node --test test/*.test.js", "qa":"node ./src/cli.js"},
+  "exports": {
+    ".": "./index.js",
+    "./engine": "./src/engine.js",
+    "./scanner": "./src/scanner.js",
+    "./browser": "./src/browser.js",
+    "./semantic": "./src/semantic.js",
+    "./markup": "./src/markup.js",
+    "./combination-runtime": "./src/combination-runtime.js",
+    "./algorithms": "./src/algorithms.js",
+    "./benchmark": "./src/benchmark.js"
+  },
+  "files": [
+    "index.js",
+    "src",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "*"
+  },
+  "dependencies": {
+    "typescript": "^5.8.3",
+    "postcss": "^8.5.0"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "qa": "node ./src/cli.js",
+    "benchmark": "node ./bench/run.js --output bench/results-v0.4.0.json"
+  },
   "license": "MIT",
-  "keywords": ["deepseek-harness", "dsh-plugin", "frontend", "qa", "cdp", "static-analysis", "visual-regression"]
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "frontend",
+    "qa",
+    "cdp",
+    "static-analysis",
+    "visual-regression"
+  ]
 }

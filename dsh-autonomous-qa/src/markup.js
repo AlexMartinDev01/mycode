@@ -228,7 +228,7 @@ export function planTagCombinations(markup,{file,maxCases=32,contracts={}}={}){
   for(const [groupId,fields] of groupMap){
     const inputFields=fields.filter(n=>['input','select','textarea'].includes(n.tag.toLowerCase()));
     const actionNodes=fields.filter(n=>!['input','select','textarea'].includes(n.tag.toLowerCase()));
-    const factors=[...inputFields,...actionNodes].slice(0,12).map(n=>({node:n.key,tag:n.tag,selector:n.selector,kind:['input','select','textarea'].includes(n.tag.toLowerCase())?'input':'action',levels:['input','select','textarea'].includes(n.tag.toLowerCase())?levelsFor(n):[{id:'idle',value:'not-triggered'},{id:'activate',value:'activate'}],file:n.file,line:n.line}));
+    const factors=[...inputFields,...actionNodes].slice(0,12).map(n=>({node:n.key,tag:n.tag,selector:n.selector,kind:['input','select','textarea'].includes(n.tag.toLowerCase())?'input':'action',risk:1+Math.min(3,n.events.length)+Math.min(3,n.conditions.length)+Math.min(2,n.bindings.length),levels:['input','select','textarea'].includes(n.tag.toLowerCase())?levelsFor(n):[{id:'idle',value:'not-triggered'},{id:'activate',value:'activate'}],file:n.file,line:n.line}));
     const scenarios=[],remaining=new Set();
     for(let i=0;i<factors.length;i++)for(let j=i+1;j<factors.length;j++)for(let a=0;a<factors[i].levels.length;a++)for(let b=0;b<factors[j].levels.length;b++)remaining.add(`${i}:${a}|${j}:${b}`);
     const scenariosKeys=new Set();
@@ -264,7 +264,7 @@ export function planTagCombinations(markup,{file,maxCases=32,contracts={}}={}){
     }
     const totalPairs=factors.reduce((sum,f,i)=>sum+factors.slice(i+1).reduce((s,g)=>s+f.levels.length*g.levels.length,0),0);
     const stateDependencies=[...new Set(fields.flatMap(n=>n.refs))].sort();
-    groups.push({group:groupId,sourceFile:fields[0]?.file,fields:inputFields.length,actions:actionNodes.length,stateDependencies,analyzedFactors:factors.length,truncatedFactors:Math.max(0,fields.length-factors.length),totalPairs,coveredPairs:totalPairs-remaining.size,uncoveredPairs:remaining.size,scenarios,status:'PLAN_ONLY',limitations:['All generated cases are NOT_TESTED until executed against a real browser.','Business assertions require an independent oracle; source code is not a trustworthy expected result.','Cross-field constraints and disabled/conditional controls require runtime checking.']});
+    groups.push({group:groupId,sourceFile:fields[0]?.file,fields:inputFields.length,actions:actionNodes.length,stateDependencies,factorDefinitions:factors,analyzedFactors:factors.length,truncatedFactors:Math.max(0,fields.length-factors.length),totalPairs,coveredPairs:totalPairs-remaining.size,uncoveredPairs:remaining.size,scenarios,status:'PLAN_ONLY',limitations:['All generated cases are NOT_TESTED until executed against a real browser.','Business assertions require an independent oracle; source code is not a trustworthy expected result.','Cross-field constraints and disabled/conditional controls require runtime checking.']});
   }
   return {summary:{groups:groups.length,scenarios:groups.reduce((a,g)=>a+g.scenarios.length,0),uncoveredPairs:groups.reduce((a,g)=>a+g.uncoveredPairs,0)},groups};
 }
