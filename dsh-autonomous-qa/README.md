@@ -1,4 +1,4 @@
-# DSH Autonomous Frontend QA — v0.2.0 (experimental)
+# DSH Autonomous Frontend QA — v0.5.0 (experimental)
 
 **A working DSH tool plugin + standalone QA engine.** Static source indexing, bounded cross-file direct-call graph, native Chromium CDP browser input, independent function assertions, DOM/CSS geometry checks, visual PNG-baseline diff and auditable reports. No Playwright, Puppeteer or Selenium runtime dependency.
 
@@ -28,6 +28,53 @@ If you installed the package through a DSH bundle command, restart the `web` pro
 
 **Connection to current GitHub delivery:** If the plugin lives in a folder of another repository (rather than at repo root), clone the repository and install the local folder as above. Do not use the plain `github:owner/repository#branch` bundle source for a plugin stored inside a subfolder without a supported subdirectory packaging mechanism.
 
+## v0.5 hardening and traceability
+
+- **Network guard:** a direct CDP Fetch interception layer blocks external document/subresource requests by default, even when initiated by page code. This does **not** replace an OS firewall or fully guarantee network isolation.
+- **Reliable clicks:** five hit-tested visible points reduce false obstruction reports from partially covered elements. Disabled controls remain blocked.
+- **Native select:** CDP keyboard events now support `selectOption` and generated combinations containing dropdown choices.
+- **Asynchronous oracle:** `expectEventually` waits until an independent assertion is stable for `stableForMs` (default 150 ms); optionally specify `settleWhen:{selector:"#loading",visible:false}` to wait for application readiness.
+- **State evidence:** new `frontend_qa_trace_interaction` runs a test-environment-authorized click/fill/select and returns before/after DOM, styles, network/console evidence and optional independent assertions. It does not prove root-cause lines.
+- **Case isolation:** previously observed network responses are cleared for each combined test case.
+- **Stress:** 61 unit/integration checks; a separate 1,000-seed/9,666-scenario constrained planner stress run. See `VERIFICATION.md` and `bench/stress-results-v0.5.0.json`. Most tests use synthetic fixtures; no claims of universal bug detection or complete QA engineer replacement.
+
+Examples:
+
+```json
+{"action":"expectEventually","timeoutMs":3000,"stableForMs":200,"settleWhen":{"selector":"#loading","visible":false},"assertion":{"action":"expectText","selector":"#status","equals":"Saved"}}
+```
+
+The interaction trace plugin tool requires `acknowledgeDisposableEnvironment:true`, `session`, and `configJson` such as `{"action":"click","selector":"#submit","observeSelectors":["#status"],"assertions":[{"action":"expectText","selector":"#status","equals":"Done"}]}`.
+
+**DSH host loading remains unverified**; registration contract tests use a stub host. Native selection is supported for single-selection `<select>` but not all custom dropdowns.
+
+## v0.4 algorithmic mode and controlled comparison
+
+The legacy `frontend_qa_plan_combinations` and `frontend_qa_test_combinations` remain the control strategy (`strategy: "baseline"`).
+
+The new `frontend_qa_plan_algorithmic` implements bounded **constraint-aware weighted pairwise covering** (greedy set-cover, **not full IPOG**). Supply forbidden state patterns by group, for example `{"src/Panel.vue#page":[{"when":{"#consent":"unchecked","#submit":"activate"}}]}`. The testing tool now accepts `strategy:"algorithm"`, `constraintsJson`, and `seed` to **actually execute** the algorithmic scenarios; the same independent `rulesJson` contract is required.
+
+New DSH tools:
+
+- `frontend_qa_plan_algorithmic` — algorithmic input/tag combinations with explicit constraints, coverage and lines.
+- `frontend_qa_plan_model_paths` — BFS shortest state transition paths from an independently validated model.
+- `frontend_qa_rank_fault_candidates` — Ochiai scoring from actual pass/fail execution line coverage; statistical ranking only, **not root-cause proof**.
+- `frontend_qa_compare_algorithms` — safe offline baseline/algorithm A/B benchmark on bundled **synthetic** faults, NOT real project effectiveness.
+
+Library functions `minimizeFailingSequence` (bounded ddmin) and `rankFaultCandidates` can be consumed programmatically; ddmin is not yet exposed as autonomous DSH repair and requires an external reproducible failure predicate. Model-based paths are not yet automatically inferred or executed by the planner.
+
+Commands:
+
+```bash
+npm test
+npm run benchmark
+node bench/holdout.js
+```
+
+Saved reproducible data and methodology: `BENCHMARK_REPORT.md`, `bench/results-v0.4.0.json`, `bench/holdout-results-v0.4.0.json`, `bench/browser-results-v0.4.0.json`.
+
+**Comparability limits:** same case budget per fixture; v0.3 control uses a greedy heuristic too, so “without algorithm” means **without the NEW algorithms**, not literally algorithm-free. Constraint knowledge is supplied only to the enhanced strategy because v0.3 has no contract constraints. Offline fault triggers are synthetic, not proof of full QA engineer replacement or accuracy on production bugs.
+
 ## Tools exposed to DSH
 
 | Tool | Purpose |
@@ -39,6 +86,7 @@ If you installed the package through a DSH bundle command, restart the `web` pro
 | `frontend_qa_visual_audit` | Find obstructed controls, overflow, clipping, broken images, low-contrast candidates |
 | `frontend_qa_explore` | Discover interactive controls and optionally execute bounded low-risk interactions in authorized disposable environment |
 | `frontend_qa_close_browser` | Free Chromium resources |
+| `frontend_qa_trace_interaction` | Capture before/after DOM and runtime evidence with independent assertions for one explicitly authorized action |
 | `frontend_qa_run_suite` | Source scan + sequential browser actions + visual audit + JSON/Markdown report |
 
 Sample DSH flow:
@@ -65,7 +113,7 @@ Start your front-end test server yourself (e.g. `npm run dev -- --host 127.0.0.1
 
 The optional `viewports` spec field accepts up to 12 `{width,height}` objects and performs responsive visual audits at each size after the functional steps. This is geometry-based responsive probing, not a cross-browser visual oracle.
 
-Supported spec steps: `navigate`, `viewport`, `click`, `fill`, `wait`, `inspect`, `expectText`, `expectValue`, `expectVisible`, `expectUrl`, `expectStyle`, `expectNumber`, `expectDerived`, `expectLayout`, `expectAttribute`, `expectCount`, `expectNetwork`, `css`, `visual`, `screenshot`, `visualBaseline`. `visualBaseline` needs a previously reviewed PNG baseline, captured at identical viewport, DPR, fonts, animations and data state. It measures changed pixels, not semantic intent.
+Supported spec steps: `navigate`, `viewport`, `click`, `fill`, `selectOption`, `expectEventually`, `wait`, `inspect`, `expectText`, `expectValue`, `expectVisible`, `expectUrl`, `expectStyle`, `expectNumber`, `expectDerived`, `expectLayout`, `expectAttribute`, `expectCount`, `expectNetwork`, `css`, `visual`, `screenshot`, `visualBaseline`. `visualBaseline` needs a previously reviewed PNG baseline, captured at identical viewport, DPR, fonts, animations and data state. It measures changed pixels, not semantic intent.
 
 Test reports live in output directory (`report.json`, `report.md`) with explicit PASS, FAIL, SUSPECT and UNKNOWN statuses. `codeCandidates` contains only potentially relevant lines; it never claims they are the confirmed root cause.
 
@@ -75,7 +123,7 @@ Test reports live in output directory (`report.json`, `report.md`) with explicit
 npm test
 ```
 
-23 tests include bounded cross-file named-function linkage, path aliases, Vue line preservation, independent derived business formulas and layout assertions, fixture cross-file imports, Chromium mouse and keyboard interaction, calculation defect detection, overlay obstruction, CSS trace, screenshot regression, safety guards and report generation. **Note:** the isolated CI-like environment where this project was initially built includes a forced Chromium policy `URLBlocklist:["*"]`; therefore in-browser tests inject HTML into `about:blank` and the URL navigation integration test verifies truthful fatal-error reporting. Full localhost navigation and actual plugin loading must be checked on a normal DSH installation.
+42 tests include bounded cross-file named-function linkage, path aliases, Vue line preservation, independent derived business formulas and layout assertions, fixture cross-file imports, Chromium mouse and keyboard interaction, calculation defect detection, overlay obstruction, CSS trace, screenshot regression, safety guards and report generation. **Note:** the isolated CI-like environment where this project was initially built includes a forced Chromium policy `URLBlocklist:["*"]`; therefore in-browser tests inject HTML into `about:blank` and the URL navigation integration test verifies truthful fatal-error reporting. Full localhost navigation and actual plugin loading must be checked on a normal DSH installation.
 
 ## Current limitations / next engineering stages
 

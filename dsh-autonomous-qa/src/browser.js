@@ -50,7 +50,20 @@ export class CdpConnection extends EventEmitter {
 }
 
 export class ChromiumDriver {
-  constructor(options={}) {this.options=options;this.logs={exceptions:[],console:[],network:[]};this.cssHeaders=new Map();this.requestInfo=new Map();this.ready=false;this.child=null;this.cdp=null;}
+  constructor(options={}) {this.options=options;this.logs={exceptions:[],console:[],network:[]};this.cssHeaders=new Map();this.requestInfo=new Map();this.ready=false;this.child=null;this.cdp=null;this.blockedRequests=0;}
+  resetObservations(){this.logs={exceptions:[],console:[],network:[]};this.requestInfo.clear();return true;}
+  async #interceptRequest(event){
+    const url=event.request?.url||'';
+    // CDP receives subresource requests and document navigation alike. Reject external origins
+    // by default, including navigation initiated by JavaScript or clicking an anchor.
+    let permitted=false;
+    try{const u=new URL(url);permitted=['about:','data:','blob:'].includes(u.protocol)||
+      (['http:','https:'].includes(u.protocol)&&(this.options.allowExternal===true||['localhost','127.0.0.1','[::1]'].includes(u.hostname)));}catch{}
+    try{
+      if(permitted)await this.cdp.command('Fetch.continueRequest',{requestId:event.requestId},5000);
+      else {this.blockedRequests++;this.logs.network.push({method:'BLOCKED',url,reason:'external-or-unsupported-scheme'});await this.cdp.command('Fetch.failRequest',{requestId:event.requestId,errorReason:'BlockedByClient'},5000);}
+    }catch(e){this.logs.network.push({method:'INTERCEPT_ERROR',url,error:String(e.message||e)});}
+  }
   async start() {
     const port=await freePort();this.port=port;
     this.tempDir=await fs.mkdtemp(path.join(os.tmpdir(),'dsh-qa-'));
@@ -70,6 +83,7 @@ export class ChromiumDriver {
       const page=list?.find(t=>t.type==='page'&&t.webSocketDebuggerUrl);
       if(!page) throw new Error('Chromium CDP page not ready');
       this.cdp=await CdpConnection.connect(page.webSocketDebuggerUrl);
+      this.cdp.on('Fetch.requestPaused',e=>{void this.#interceptRequest(e);});
       this.cdp.on('Runtime.exceptionThrown',e=>this.logs.exceptions.push({text:e.exceptionDetails?.text,line:e.exceptionDetails?.lineNumber,url:e.exceptionDetails?.url,stack:e.exceptionDetails?.stackTrace?.callFrames}));
       this.cdp.on('Runtime.consoleAPICalled',e=>{if(['error','warning','assert'].includes(e.type))this.logs.console.push({type:e.type,args:e.args?.map(x=>x.value??x.description)});});
       this.cdp.on('Network.requestWillBeSent',e=>{this.requestInfo.set(e.requestId,{url:e.request?.url,method:e.request?.method});if(this.requestInfo.size>1000)this.requestInfo.delete(this.requestInfo.keys().next().value);});
@@ -77,6 +91,7 @@ export class ChromiumDriver {
       this.cdp.on('Network.loadingFailed',e=>{this.logs.network.push({url:e.requestId,error:e.errorText,method:'FAILED'});});
       this.cdp.on('CSS.styleSheetAdded',e=>{this.cssHeaders.set(e.header.styleSheetId,e.header);});
       await Promise.all(['Page.enable','Runtime.enable','Network.enable','DOM.enable','CSS.enable'].map(x=>this.cdp.command(x)));
+      await this.cdp.command('Fetch.enable',{patterns:[{urlPattern:'*',requestStage:'Request'}]});
       await this.setViewport(this.options.width||1280,this.options.height||800);
       this.ready=true;return this;
     }catch(e){await this.stop();throw e;}
@@ -108,10 +123,20 @@ export class ChromiumDriver {
     return await this.evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e)return null;const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {tag:e.tagName,text:(e.innerText||e.value||'').slice(0,500),outerHTML:e.outerHTML.slice(0,500),rect:{x:r.x,y:r.y,width:r.width,height:r.height},value:e.value??null,styles:{color:s.color,background:s.backgroundColor,display:s.display,visibility:s.visibility,position:s.position,zIndex:s.zIndex,fontSize:s.fontSize,overflow:s.overflow},visible:r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'};})()`);
   }
   async click(selector){
-    const pos=await this.evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e)return null;e.scrollIntoView({block:'center',inline:'center'});const r=e.getBoundingClientRect();const x=r.left+r.width/2,y=r.top+r.height/2;const hit=document.elementFromPoint(x,y);return {x,y,width:r.width,height:r.height,obstructed:!hit||!(hit===e||e.contains(hit)),hit:hit?.outerHTML.slice(0,180)||null};})()`);
+    const pos=await this.evaluate(`(()=>{
+      const e=document.querySelector(${JSON.stringify(selector)});if(!e)return null;
+      e.scrollIntoView({block:'center',inline:'center'});
+      const r=e.getBoundingClientRect(),s=getComputedStyle(e);
+      if(r.width<=0||r.height<=0||s.display==='none'||s.visibility==='hidden'||s.pointerEvents==='none'||e.matches(':disabled'))return {hidden:true};
+      const x0=Math.max(0,r.left),y0=Math.max(0,r.top),x1=Math.min(document.documentElement.clientWidth,r.right),y1=Math.min(document.documentElement.clientHeight,r.bottom);
+      if(x1<=x0||y1<=y0)return {hidden:true};
+      const points=[[0.5,0.5],[0.25,0.5],[0.75,0.5],[0.5,0.25],[0.5,0.75]].map(([ax,ay])=>({x:x0+(x1-x0)*ax,y:y0+(y1-y0)*ay}));
+      let hit=null;for(const p of points){const node=document.elementFromPoint(p.x,p.y);if(node&&(e===node||e.contains(node)))return {x:p.x,y:p.y,hidden:false};if(!hit)hit=node?.outerHTML?.slice(0,180);}
+      return {obstructed:true,hidden:false,hit:hit||null};
+    })()`);
     if(!pos)throw new Error(`Element not found: ${selector}`);
-    if(pos.width===0||pos.height===0)throw new Error(`Element is hidden: ${selector}`);
-    if(pos.obstructed)throw new Error(`Element center obstructed: ${selector} by ${pos.hit}`);
+    if(pos.hidden)throw new Error(`Element is hidden or disabled: ${selector}`);
+    if(pos.obstructed)throw new Error(`Element obstructed: ${selector} by ${pos.hit}`);
     await this.cdp.command('Input.dispatchMouseEvent',{type:'mouseMoved',x:pos.x,y:pos.y});
     await this.cdp.command('Input.dispatchMouseEvent',{type:'mousePressed',x:pos.x,y:pos.y,button:'left',clickCount:1});
     await this.cdp.command('Input.dispatchMouseEvent',{type:'mouseReleased',x:pos.x,y:pos.y,button:'left',clickCount:1});
@@ -126,6 +151,19 @@ export class ChromiumDriver {
     await this.cdp.command('Input.dispatchKeyEvent',{type:'keyUp',key:'Backspace',code:'Backspace',windowsVirtualKeyCode:8});
     await this.cdp.command('Input.insertText',{text:String(value)});
     return {filled:true,value:await this.evaluate(`document.querySelector(${JSON.stringify(selector)})?.value??null`)};
+  }
+  /** Choose a native select option using trusted keyboard events, not a DOM event imitation. */
+  async selectOption(selector,value){
+    const target=await this.evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e||e.tagName!=='SELECT')return null;const opts=[...e.options];const i=opts.findIndex(o=>o.value===${JSON.stringify(String(value))}&&!o.disabled);return {index:i,disabled:e.disabled,multiple:e.multiple};})()`);
+    if(!target||target.disabled||target.multiple||target.index<0)throw new Error(`Unsupported/missing select option: ${selector}`);
+    await this.click(selector);
+    for(const [key,code] of [['Home','Home'],...Array(target.index).fill(['ArrowDown','ArrowDown']),['Enter','Enter']]){
+      const vk=key==='Home'?36:key==='ArrowDown'?40:13;
+      await this.cdp.command('Input.dispatchKeyEvent',{type:'keyDown',key,code,windowsVirtualKeyCode:vk});
+      await this.cdp.command('Input.dispatchKeyEvent',{type:'keyUp',key,code,windowsVirtualKeyCode:vk});
+    }
+    const selected=await this.evaluate(`document.querySelector(${JSON.stringify(selector)})?.value??null`);
+    return {selected,expected:String(value),pass:selected===String(value),trustedKeyboard:true};
   }
   async screenshot(outputPath){
     const {data}=await this.cdp.command('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});

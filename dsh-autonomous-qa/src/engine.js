@@ -9,9 +9,9 @@ import { correlateFindings } from './diagnostics.js';
 import { buildMarkupIndex,planTagCombinations } from './markup.js';
 
 const STATUS={PASS:'PASS',FAIL:'FAIL',UNKNOWN:'UNKNOWN',SUSPECT:'SUSPECT',NOT_TESTED:'NOT_TESTED'};
-const allowedActions=new Set(['navigate','viewport','click','fill','wait','inspect','expectText','expectValue','expectVisible','expectUrl','expectStyle','expectNumber','expectDerived','expectAttribute','expectCount','expectNetwork','expectLayout','visual','screenshot','visualBaseline','css']);
+const allowedActions=new Set(['navigate','viewport','click','fill','wait','inspect','expectText','expectValue','expectVisible','expectUrl','expectStyle','expectNumber','expectDerived','expectAttribute','expectCount','expectNetwork','expectLayout','expectEventually','selectOption','visual','screenshot','visualBaseline','css']);
 function serial(err){return err instanceof Error?err.message:String(err);}
-function validateStep(step){if(!step||!allowedActions.has(step.action))throw new Error(`Unsupported action: ${step?.action}`);if(['click','fill','inspect','expectText','expectValue','expectVisible','expectStyle','expectNumber','expectDerived','expectAttribute','expectCount','expectLayout','css'].includes(step.action)&&typeof step.selector!=='string')throw new Error(`Missing selector for ${step.action}`);}
+function validateStep(step){if(!step||!allowedActions.has(step.action))throw new Error(`Unsupported action: ${step?.action}`);if(['click','fill','inspect','expectText','expectValue','expectVisible','expectStyle','expectNumber','expectDerived','expectAttribute','expectCount','expectLayout','selectOption','css'].includes(step.action)&&typeof step.selector!=='string')throw new Error(`Missing selector for ${step.action}`);}
 export async function executeStep(browser,step,{outputDir='',index=0}={}){
   validateStep(step);
   const d=step;
@@ -20,6 +20,7 @@ export async function executeStep(browser,step,{outputDir='',index=0}={}){
     case 'viewport':return browser.setViewport(d.width,d.height);
     case 'click':return browser.click(d.selector);
     case 'fill':return browser.fill(d.selector,d.value??'');
+    case 'selectOption':return browser.selectOption(d.selector,d.value);
     case 'wait':{
       if(d.selector){await browser.waitFor(`!!document.querySelector(${JSON.stringify(d.selector)})`,Math.min(d.timeoutMs||4000,30000));return {ready:true};}
       await new Promise(r=>setTimeout(r,Math.min(d.ms||100,3000)));return {waited:true};
@@ -113,6 +114,31 @@ export async function executeStep(browser,step,{outputDir='',index=0}={}){
       if(q && d.align==='center-x' && Math.abs((r.x+r.width/2)-(q.x+q.width/2))>tol)failures.push('center-misaligned');
       const pass=failures.length===0;
       return {pass,failures,...outcome,cssEvidence:pass?undefined:await browser.cssFor(d.selector),oracle:{origin:'scenario-layout-contract'}};
+    }
+    case 'expectEventually':{
+      const check=d.assertion;
+      const safe=new Set(['expectText','expectValue','expectVisible','expectUrl','expectNumber','expectDerived','expectAttribute','expectCount','expectStyle','expectLayout','expectNetwork']);
+      if(!check||!safe.has(check.action))throw new Error('expectEventually requires a read-only assertion');
+      const timeout=Math.max(100,Math.min(10000,Number(d.timeoutMs??3000)));
+      const interval=Math.max(30,Math.min(500,Number(d.intervalMs??70)));
+      // Avoid stale-state false PASS: require assertion to remain true for a stability window.
+      const stableForMs=Math.max(0,Math.min(1500,Number(d.stableForMs??150)));
+      const started=Date.now();let stableSince=null,last,wasStable=false,attempts=0;
+      do{
+        last=await executeStep(browser,check,{outputDir,index});attempts++;
+        let settled=true;
+        if(d.settleWhen){
+          if(typeof d.settleWhen.selector!=='string')throw new Error('settleWhen.selector required');
+          const target=await browser.inspect(d.settleWhen.selector);
+          settled=!!target?.visible===(d.settleWhen.visible!==false);
+        }
+        if(last?.pass===true&&settled){if(stableSince===null)stableSince=Date.now();if(Date.now()-stableSince>=stableForMs){wasStable=true;break;}}
+        else stableSince=null;
+        if(Date.now()-started>=timeout)break;
+        await new Promise(resolve=>setTimeout(resolve,interval));
+      }while(true);
+      if(wasStable)return {pass:true,attempted:last,elapsedMs:Date.now()-started,stableForMs,attempts};
+      return {pass:last?.pass===null?null:false,verdict:last?.pass===null?'UNKNOWN':'FAIL',attempted:last,reason:'Timed out waiting for stable assertion and settle condition',elapsedMs:Date.now()-started,stableForMs,attempts};
     }
     case 'expectNetwork':{
       if(!d.urlIncludes||typeof d.urlIncludes!=='string')throw new Error('expectNetwork requires urlIncludes');

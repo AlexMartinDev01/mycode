@@ -10,6 +10,7 @@ import { buildMarkupIndex,planTagCombinations } from './markup.js';
 import { runCombinationCases } from './combination-runtime.js';
 import {planAlgorithmicTagCombinations,planModelTransitions,rankFaultCandidates} from './algorithms.js';
 import {runComparison} from './benchmark.js';
+import {traceInteraction} from './interaction.js';
 
 export const name='dsh-autonomous-frontend-qa';
 export const inject=['tools'];
@@ -86,6 +87,11 @@ export function apply(ctx) {
       const b=sessions.get(args.session);if(!b)throw new Error('Unknown browser session');
       const step=JSON.parse(args.stepJson);const result=await executeStep(b,step,{outputDir:args.outputDir});return {ok:result?.pass!==false,result,verdict:typeof result?.pass==='boolean'?(result.pass?'PASS':'FAIL'):(result?.pass===null?'UNKNOWN':'OBSERVED')};
     });},
+  });
+  register({
+    name:'frontend_qa_trace_interaction',description:'Observe BEFORE/AFTER DOM, CSS, network and console evidence around one deterministic CDP click/fill/select, then evaluate optional independent read-only assertions. No source line is claimed causal merely from a DOM change.',
+    parameters:{session:{type:'string',required:true},acknowledgeDisposableEnvironment:{type:'boolean',required:true},configJson:{type:'string',required:true,description:'JSON: {action:"click",selector:"#save",observeSelectors:["#status"],assertions:[{action:"expectText",selector:"#status",equals:"Saved"}],settleMs:100}'}},output:jsonOut,
+    async execute(args){return bounded(async()=>{const b=sessions.get(args.session);if(!b)throw new Error('Unknown session');if(args.acknowledgeDisposableEnvironment!==true)throw new Error('Interaction tracing requires disposable test environment authorization');return traceInteraction(b,JSON.parse(args.configJson));});},
   });
   register({
     name:'frontend_qa_visual_audit',description:'Measure real rendered layout and find element obstruction, overflow, clipping, broken images, and contrast suspects. Attach matching CSS rules when requested. Findings require validation of design intent.',

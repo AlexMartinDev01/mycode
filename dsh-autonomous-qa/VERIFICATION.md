@@ -1,29 +1,40 @@
-# v0.2.0 validation record — 2026-10-25
+# Verification record — v0.5.0
 
-## Commands and outcome
+Environment: container Node.js v22.16.0; headless Chromium `/usr/bin/chromium`; TypeScript and PostCSS provided from local global installation. The DSH distribution itself was **not installed or exercised** here. Production DSH requires Node.js >=22.19.0 per package metadata.
 
-Executed in sandbox: `npm test` (Node v22.16.0, system Chromium with sandbox-managed URL policy).
+## Commands and observed evidence
 
-**23 passed; 0 failed**, including all 11 previous checks and 12 new checks. This is a test-suite result, NOT full application coverage or DSH host acceptance.
+- `node --test test/*.test.js`: **61 passed, 0 failed** (final suite; also rerun after changes in the authoring environment).
+- `node bench/stress-v0.5.0.js`: 1,000 deterministic seeds, 9,666 generated synthetic combinations, 49,750/49,750 feasible pair incidences, **zero** invalid forbidden combinations, duplicates, or inconsistent counts. Limited factor domains and configured budget — not universal pairwise guarantees.
+- `node bench/run.js --output bench/results-v0.5.0.json`: original five synthetic benchmarks reproduced: baseline 17/20 fault trigger coverage and 50.85% feasible pair coverage; algorithm 20/20 and 91.30%.
+- `node bench/holdout.js`: original 20 seeded holdout runs reproduced: baseline 206/400 synthetic fault triggers versus algorithm 356/400. These cases reuse the same synthetic fixture families, and only the algorithm gets constraint information.
 
-## New exercised scenarios
+## Browser tests (real Chromium, custom CDP, in-memory document)
 
-- Bounded cross-module direct-function call path: `src/app.js` → `src/state.js` → `src/pricing.js` and source line evidence.
-- Renamed TypeScript imports and `tsconfig.json` path aliases.
-- Vue SFC `<script setup>` function lines and intra-file direct calls.
-- Real Chromium in-memory DOM: independent multiplication rule exposes wrong 103 vs expected 300 and passes after simulated correction.
-- Missing value yields `UNKNOWN` (not false PASS); unsupported math op fails closed.
-- DOM attribute/count assertions, network-observation assertion with known recorded evidence.
-- Cross-file source candidate path explicitly marked `NOT_CONFIRMED`.
-- CSS overlay selector mapped to original stylesheet declaration line candidate.
-- Real Chromium geometry contract detects overlap and emits CSS evidence.
-- Real engine `runScenario` from in-memory HTML: 2 assertions FAIL, visual issue SUSPECT, report artifacts emitted. Expected failing known-defect scenarios count as passing detector tests.
-- Browser session policy blocks a step-level attempt to enable external browsing.
+- 24 arithmetic × quantity × discount cases: 12/12 injected arithmetic mutations detected; 12/12 unmutated control scenarios passed. These are a deliberately designed family; equivalent mutants and unknown defect categories are **not** addressed.
+- Native keyboard interaction for dropdown selection and real DOM change events.
+- Delayed asynchronous updates and stability-window regression (avoids erroneously passing on the previous valid value).
+- Partial control obstruction and fully blocking overlay; disabled input refusal.
+- Responsive layout overflow at 380px and absence at 900px, plus overlay hit-testing.
+- External network resource blocked by CDP interception in default localhost-only mode.
+- Network observations reset between combination cases; contract results do not carry stale response evidence.
+- Independent functional and layout assertions; DOM state tracing including sensitive input redaction.
+- Isolated Chromium profiles have non-shared application state.
+- End-to-end report JSON/Markdown creation with explicit known FAIL and responsive visual warning.
+- 120 seeded constrained planner property tests in unit-test suite; 1000 seeds in standalone stress script.
 
-## Explicit gaps
+## Major fixed risks
 
-- Browser/DSH installed host integration has NOT been exercised. The tool-registration smoke test uses a mocked DSH host.
-- Chromium has an enforced URLBlocklist in this environment; in-memory `Page.setDocumentContent` is used for positive browser integration. Live localhost navigation remains unverified and the navigation failure path is tested.
-- A direct-call semantic index is not whole-program dataflow, asynchronous side-effect analysis, or proof of a uniquely causal root line.
-- Visual heuristic issues require independent expected layout/design rules. No complete pixel-accurate Figma or semantic aesthetic oracle.
-- No standalone Firefox/Safari, enterprise safety boundary, 100% defect detection, or guaranteed human tester replacement.
+1. The previous browser driver only validated URLs provided to explicit navigation calls. v0.5 intercepts browser requests (including subresources) at the CDP Fetch domain and blocks external targets unless external access was explicitly granted at driver start. This is not a proof of network sandboxing at the OS layer.
+2. An expectation could falsely pass using an old DOM value before an asynchronous incorrect update. `expectEventually` now requires a sustained successful assertion and supports an optional independent settle condition.
+3. Existing case-local network logs could incorrectly satisfy the next case's API assertion. Case observations now reset before every combination case.
+4. A small overlay crossing a clickable element's center could trigger a false blocked result even though other points were usable. Click targeting samples five visible points.
+5. Select fields with `first-available-option` were previously skipped; now the driver uses trusted keyboard events to select values where Chromium supports native selection.
+
+## Remaining important limits
+
+- DSH host plugin loading and pnpm bundle installation have not been tested in the user's installed DSH version.
+- Browser navigation to even `127.0.0.1` is blocked by container policy (`ERR_BLOCKED_BY_ADMINISTRATOR`). Real DOM and input tests use `Page.setDocumentContent`; no full production site navigation was tested.
+- No verified arbitrary Vue/React runtime dataflow, automatic business oracle derivation, full shadow DOM/iframe exploration, Firefox/Safari compatibility, or causal proof of a unique defect source line.
+- `traceInteraction` proves only runtime changes; source-line candidates remain `NOT_CONFIRMED` without an independent causal experiment.
+- This suite is not a calibrated measure of false negatives on natural real-world bug corpora. No system can guarantee detection of all unknown bugs.
