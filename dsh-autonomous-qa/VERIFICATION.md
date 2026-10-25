@@ -4,7 +4,7 @@
 
 Executed in sandbox: `npm test` (Node v22.16.0, system Chromium with sandbox-managed URL policy).
 
-**24 passed; 0 failed**, including all 11 previous checks and 13 new checks. This is a test-suite result, NOT full application coverage or DSH host acceptance.
+**23 passed; 0 failed**, including all 11 previous checks and 12 new checks. This is a test-suite result, NOT full application coverage or DSH host acceptance.
 
 ## New exercised scenarios
 
@@ -19,7 +19,6 @@ Executed in sandbox: `npm test` (Node v22.16.0, system Chromium with sandbox-man
 - Real Chromium geometry contract detects overlap and emits CSS evidence.
 - Real engine `runScenario` from in-memory HTML: 2 assertions FAIL, visual issue SUSPECT, report artifacts emitted. Expected failing known-defect scenarios count as passing detector tests.
 - Browser session policy blocks a step-level attempt to enable external browsing.
-- Cross-file parameter-to-argument mapping and direct return expression/source line evidence, explicitly non-causal.
 
 ## Explicit gaps
 
@@ -28,3 +27,16 @@ Executed in sandbox: `npm test` (Node v22.16.0, system Chromium with sandbox-man
 - A direct-call semantic index is not whole-program dataflow, asynchronous side-effect analysis, or proof of a uniquely causal root line.
 - Visual heuristic issues require independent expected layout/design rules. No complete pixel-accurate Figma or semantic aesthetic oracle.
 - No standalone Firefox/Safari, enterprise safety boundary, 100% defect detection, or guaranteed human tester replacement.
+
+## v0.3.0 (2026-10-25) — new tag-combination checks
+
+`npm test`: **33 passed, 0 failed** in local isolated environment. In addition to the original 24 checks:
+- Vue template nesting, exact source lines, `v-model`/`v-if`/`v-show`/event indexing and an imported handler link.
+- React JSX conditional ancestors, events, component import edges and source positions.
+- HTML tag tokenization with quoted `>` content and exclusion of raw script content.
+- Deterministic pairwise input/action-state combinations with explicit NOT_TESTED/UNKNOWN oracles.
+- Authorized disposable environment and localhost-only policy; no independent oracle causes UNKNOWN rather than a false PASS.
+- Real Chromium in-memory form testing generated input combinations and identifying a deliberately wrong addition-versus-multiplication business calculation.
+- Action-only buttons, Vue nested `<template>` blocks, and assertion-injection rejection.
+
+**Not tested:** actual DSH installation, live localhost-navigation suite, exhaustive JSX/Vue syntactic dialects, complete cross-file reactive dataflow, full state-machine coverage, 100% defect detection, or causal proof of unique defective source lines.

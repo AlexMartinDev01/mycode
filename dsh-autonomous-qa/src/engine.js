@@ -6,6 +6,7 @@ import { buildSemanticIndex } from './semantic.js';
 import { auditVisual,enrichVisualFindings } from './visual.js';
 import { comparePngFiles } from './png.js';
 import { correlateFindings } from './diagnostics.js';
+import { buildMarkupIndex,planTagCombinations } from './markup.js';
 
 const STATUS={PASS:'PASS',FAIL:'FAIL',UNKNOWN:'UNKNOWN',SUSPECT:'SUSPECT',NOT_TESTED:'NOT_TESTED'};
 const allowedActions=new Set(['navigate','viewport','click','fill','wait','inspect','expectText','expectValue','expectVisible','expectUrl','expectStyle','expectNumber','expectDerived','expectAttribute','expectCount','expectNetwork','expectLayout','visual','screenshot','visualBaseline','css']);
@@ -144,7 +145,8 @@ export async function runScenario({projectRoot,url,steps=[],outputDir,chromium,a
   if(out===root)throw new Error('Output directory must not be project root');
   await fs.mkdir(out,{recursive:true});
   const startedAt=new Date().toISOString();
-  const report={schemaVersion:1,startedAt,projectRoot:root,outputs:out,scan:scan?scanProject(root):null,semantic:scan?buildSemanticIndex(root):null,tests:[],visual:null,visualByViewport:[],logs:{},summary:{pass:0,fail:0,suspect:0,unknown:0},limitations:['Static import graph is not a complete interprocedural call graph.','Visual heuristics cannot establish design intent without an approved baseline.','Precise root-cause line attribution requires independent causal validation and may be unavailable.','Chromium testing does not prove Firefox/Safari compatibility.']};
+  const report={schemaVersion:1,startedAt,projectRoot:root,outputs:out,scan:scan?scanProject(root):null,semantic:scan?buildSemanticIndex(root):null,markup:scan?buildMarkupIndex(root):null,interactionPlan:null,tests:[],visual:null,visualByViewport:[],logs:{},summary:{pass:0,fail:0,suspect:0,unknown:0},limitations:['Static import graph is not a complete interprocedural call graph.','Visual heuristics cannot establish design intent without an approved baseline.','Precise root-cause line attribution requires independent causal validation and may be unavailable.','Chromium testing does not prove Firefox/Safari compatibility.']};
+  if(report.markup)report.interactionPlan=planTagCombinations(report.markup,{maxCases:16});
   const browser=new ChromiumDriver({executablePath:chromium,allowExternal,width,height});
   try {
     await browser.start();
@@ -189,7 +191,7 @@ export async function runScenario({projectRoot,url,steps=[],outputDir,chromium,a
   return report;
 }
 export function formatReport(r){
-  const rows=[`# DSH Autonomous Frontend QA`, ``, `- Project: \`${r.projectRoot}\``,`- Run: ${r.startedAt}`,`- Assertions pass/fail/suspect/unknown: ${r.summary.pass}/${r.summary.fail}/${r.summary.suspect}/${r.summary.unknown}`,`- Visual findings (fail/suspect): ${r.summary.visualFail}/${r.summary.visualSuspect}`,`- Fatal error: ${r.fatalError||'none'}`,``, `## Source coverage`, ``, `Files parsed: ${r.scan?.summary.parsed??'not scanned'}/${r.scan?.summary.discovered??'not scanned'}; statically resolved calls: ${r.semantic?.summary.resolvedCalls??'not analyzed'}; dynamically verified files: not measured`, ``, `## Test steps`, ``, `| # | Action | Selector | Result | Evidence |`,`|---|---|---|---|---|`];
+  const rows=[`# DSH Autonomous Frontend QA`, ``, `- Project: \`${r.projectRoot}\``,`- Run: ${r.startedAt}`,`- Assertions pass/fail/suspect/unknown: ${r.summary.pass}/${r.summary.fail}/${r.summary.suspect}/${r.summary.unknown}`,`- Visual findings (fail/suspect): ${r.summary.visualFail}/${r.summary.visualSuspect}`,`- Fatal error: ${r.fatalError||'none'}`,``, `## Source coverage`, ``, `Files parsed: ${r.scan?.summary.parsed??'not scanned'}/${r.scan?.summary.discovered??'not scanned'}; statically resolved calls: ${r.semantic?.summary.resolvedCalls??'not analyzed'}; markup tags: ${r.markup?.summary.tags??'not analyzed'}; proposed tag-state cases: ${r.interactionPlan?.summary.scenarios??'not planned'} (NOT_TESTED unless independently executed); dynamically verified files: not measured`, ``, `## Test steps`, ``, `| # | Action | Selector | Result | Evidence |`,`|---|---|---|---|---|`];
   for(const t of r.tests){rows.push(`| ${t.index} | ${t.step.action} | ${String(t.step.selector||'').replaceAll('|','\\|')} | ${t.status} | ${String(t.error||((t.result?.actual!=null)?`actual=${t.result.actual}, expected=${t.result.expected}`:'')).replaceAll('|','\\|').slice(0,140)} |`);}
   rows.push('','## Visual findings','');
   for(const issue of r.visual?.issues||[])rows.push(`- **${issue.verdict}** ${issue.type} on \`${issue.selector}\`: ${JSON.stringify(issue.detail)}${issue.cssEvidence?.rules?.[0]?.url?` (style: ${issue.cssEvidence.rules[0].url})`:''}`);

@@ -1,4 +1,4 @@
-# DSH Autonomous Frontend QA — v0.2.0 (experimental)
+# DSH Autonomous Frontend QA — v0.3.0 (experimental)
 
 **A working DSH tool plugin + standalone QA engine.** Static source indexing, bounded cross-file direct-call graph, native Chromium CDP browser input, independent function assertions, DOM/CSS geometry checks, visual PNG-baseline diff and auditable reports. No Playwright, Puppeteer or Selenium runtime dependency.
 
@@ -75,7 +75,7 @@ Test reports live in output directory (`report.json`, `report.md`) with explicit
 npm test
 ```
 
-24 tests include bounded cross-file named-function linkage, path aliases, Vue line preservation, independent derived business formulas and layout assertions, fixture cross-file imports, Chromium mouse and keyboard interaction, calculation defect detection, overlay obstruction, CSS trace, screenshot regression, safety guards and report generation. **Note:** the isolated CI-like environment where this project was initially built includes a forced Chromium policy `URLBlocklist:["*"]`; therefore in-browser tests inject HTML into `about:blank` and the URL navigation integration test verifies truthful fatal-error reporting. Full localhost navigation and actual plugin loading must be checked on a normal DSH installation.
+23 tests include bounded cross-file named-function linkage, path aliases, Vue line preservation, independent derived business formulas and layout assertions, fixture cross-file imports, Chromium mouse and keyboard interaction, calculation defect detection, overlay obstruction, CSS trace, screenshot regression, safety guards and report generation. **Note:** the isolated CI-like environment where this project was initially built includes a forced Chromium policy `URLBlocklist:["*"]`; therefore in-browser tests inject HTML into `about:blank` and the URL navigation integration test verifies truthful fatal-error reporting. Full localhost navigation and actual plugin loading must be checked on a normal DSH installation.
 
 ## Current limitations / next engineering stages
 
@@ -98,7 +98,7 @@ The scanner excludes symlink traversal, `.env` files, `node_modules`, and genera
 
 ## v0.2.0 verified improvements (2026-10-25)
 
-- New `src/semantic.js` builds a **bounded, direct function-call link graph** with conservative parameter-to-argument and return-expression evidence with source-file and line evidence across modules. Supports TS/JS aliases, basic Vue `<script setup>` and module-level callers. The graph explicitly reports incomplete resolution, not complete state/dataflow analysis.
+- New `src/semantic.js` builds a **bounded, direct function-call link graph** with source-file and line evidence across modules. Supports TS/JS aliases, basic Vue `<script setup>` and module-level callers. The graph explicitly reports incomplete resolution, not complete state/dataflow analysis.
 - New `frontend_qa_trace` lets DSH inspect the graph for a specific file + function, without reading the entire model-facing project index.
 - New **independent derived oracle** step: `expectDerived`, with an approved calculation contract (`add`, `subtract`, `multiply`, `divide`, `min`, `max`). A missing operand returns `UNKNOWN`, not PASS. `factor`, `offset`, and `tolerance` are optional.
 - New `expectLayout` checks declared width/height, viewport inclusion, relative overlap/alignment and attaches matched live CSS rules on failures. Layout checks are only as valid as the independent contract.
@@ -131,3 +131,46 @@ All assertion examples require independently reviewed business/design contracts.
 - Production hardening including hostile navigation/redirect network interception, encrypted secret handling, high-scale test scheduling and comprehensive mutation/holdout evaluation.
 
 See `VERIFICATION.md` for the exact executed test scope and environment restrictions.
+
+## v0.3.0 — tag/component interaction graphs and bounded combinations
+
+Added three DSH tools:
+
+| Tool | Behavior |
+|---|---|
+| `frontend_qa_markup` | Enumerates supported HTML/Vue/JSX/TSX markup nodes with source positions, nesting, attributes, conditional bindings, event handlers and static import links. |
+| `frontend_qa_plan_combinations` | Proposes bounded input/action-state combinations for each form or file-level interaction group. Reports **pairwise combinations covered vs. unresolved**, and never calls unexecuted cases PASS. |
+| `frontend_qa_test_combinations` | Optionally runs proposed cases in an **authorized disposable localhost environment**, resetting the page before every case and checking **independent, explicit** assertion rules. |
+
+`frontend_qa_scan` now returns `markup` in addition to import/semantic analyses. `frontend_qa_run_suite` includes markup evidence and a `NOT_TESTED` combination plan in its report (not automatically executed). Both the static graph and the combo planner have limits and should not be confused with exhaustive proof of UI correctness.
+
+### Plan without executing
+
+```bash
+node src/cli.js markup --project /path/to/frontend --out markup.json
+node src/cli.js plan --project /path/to/frontend --file src/Login.vue --max-cases 24 --out combos.json
+```
+
+For the DSH tool `frontend_qa_test_combinations`, pass an existing `session`, `projectRoot`, the exact `group` from `frontend_qa_plan_combinations`, a localhost test `pageUrl`, and `acknowledgeDisposableEnvironment:true` **after confirming the app contains no production accounts/data**. `rulesJson` must be an array of independently approved requirement rules, e.g.:
+
+```json
+[
+  {
+    "when": {"#email":"empty"},
+    "assertions": [
+      {"action":"expectText","selector":"#error","equals":"Email required"}
+    ]
+  },
+  {
+    "when": {"#email":"valid"},
+    "assertions": [
+      {"action":"expectVisible","selector":"#submit","equals":true},
+      {"action":"expectLayout","selector":"#submit","insideViewport":true}
+    ]
+  }
+]
+```
+
+The contract is **not generated as a truth claim from the current app**. Missing, equally specific conflicting, or unexecutable cases return UNKNOWN. Actions can have side effects, so the runner requires explicit disposable-environment acknowledgement and a localhost target. Visual contract assertions are supported in the same execution loop.
+
+**Known gaps:** JSX spreads, arbitrary computed props, runtime component injection, full Vue SFC AST, async state/effects, animation timing, fully verified accessibility states and system-level visual design intent are not yet modeled. Source positions and symbolic event links are useful evidence but not a verified root cause. Current planner selects up to 12 interaction factors and up to 64 cases per group (40 per executable run); covered pairs are not exhaustive path coverage. Real DSH installation and end-to-end localhost project execution still require external host verification.

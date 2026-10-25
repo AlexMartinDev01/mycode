@@ -6,6 +6,8 @@ import { ChromiumDriver } from './browser.js';
 import { executeStep,runScenario } from './engine.js';
 import { auditVisual,enrichVisualFindings } from './visual.js';
 import { explorePage } from './explorer.js';
+import { buildMarkupIndex,planTagCombinations } from './markup.js';
+import { runCombinationCases } from './combination-runtime.js';
 
 export const name='dsh-autonomous-frontend-qa';
 export const inject=['tools'];
@@ -21,7 +23,22 @@ export function apply(ctx) {
   register({
     name:'frontend_qa_scan',description:'Read every supported front-end file and build a cross-file import, functions, event, and CSS rule index with original file and line references. Returns a JSON index (may be large). Does not claim code correctness.',
     parameters:{projectRoot:{type:'string',required:true,description:'Absolute path to authorized project'}},output:jsonOut,
-    async execute(args){return bounded(async()=>{const root=path.resolve(args.projectRoot);return {scan:scanProject(root),semantic:buildSemanticIndex(root)};});},
+    async execute(args){return bounded(async()=>{const root=path.resolve(args.projectRoot);return {scan:scanProject(root),semantic:buildSemanticIndex(root),markup:buildMarkupIndex(root)};});},
+  });
+  register({
+    name:'frontend_qa_markup',description:'Index every supported HTML/Vue/JSX/TSX tag, parent/child relation, event handler, reactive binding, conditional rendering and cross-file component reference. All links are STATIC evidence, not proof of correctness.',
+    parameters:{projectRoot:{type:'string',required:true},file:{type:'string'}},output:jsonOut,
+    async execute(args){return bounded(async()=>{const index=buildMarkupIndex(path.resolve(args.projectRoot));return args.file?{summary:index.summary,nodes:index.nodes.filter(x=>x.file===args.file),edges:index.edges.filter(x=>x.from.startsWith(args.file+':')),diagnostics:index.diagnostics.filter(x=>x.file===args.file),limitations:index.limitations}:index;});}
+  });
+  register({
+    name:'frontend_qa_plan_combinations',description:'Generate bounded deterministic input/tag-state combinations with pairwise coverage, file/line evidence and UNKNOWN oracles unless independently supplied. Plans DO NOT execute.',
+    parameters:{projectRoot:{type:'string',required:true},file:{type:'string'},maxCases:{type:'number'},contractsJson:{type:'string'}},output:jsonOut,
+    async execute(args){return bounded(async()=>{const index=buildMarkupIndex(path.resolve(args.projectRoot));const contracts=args.contractsJson?JSON.parse(args.contractsJson):{};return planTagCombinations(index,{file:args.file,maxCases:args.maxCases,contracts});});}
+  });
+  register({
+    name:'frontend_qa_test_combinations',description:'Run independent-rule tag-combination tests in a disposable, localhost-only test environment, restoring state before each case. Requires explicit authorization and approved oracle rules. Does not infer expected behavior from source code.',
+    parameters:{session:{type:'string',required:true},projectRoot:{type:'string',required:true},group:{type:'string',required:true},pageUrl:{type:'string',required:true},submitSelector:{type:'string'},rulesJson:{type:'string',required:true},maxCases:{type:'number'},acknowledgeDisposableEnvironment:{type:'boolean',required:true}},output:jsonOut,
+    async execute(args){return bounded(async()=>{const browser=sessions.get(args.session);if(!browser)throw new Error('Unknown session');const plan=planTagCombinations(buildMarkupIndex(path.resolve(args.projectRoot)),{maxCases:args.maxCases});const group=plan.groups.find(g=>g.group===args.group);if(!group)throw new Error('Unknown combination group');return runCombinationCases(browser,group,{pageUrl:args.pageUrl,submitSelector:args.submitSelector,rules:JSON.parse(args.rulesJson),maxCases:args.maxCases,acknowledgeDisposableEnvironment:args.acknowledgeDisposableEnvironment});});}
   });
   register({
     name:'frontend_qa_trace',description:'Trace statically resolved cross-file direct function calls from one file and symbol. Includes exact call sites and unresolved limitations, never claims full runtime dataflow.',
