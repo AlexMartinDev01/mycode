@@ -1,0 +1,45 @@
+{
+  "fixture": "signup",
+  "kind": "real-Chromium-in-memory-synthetic-defect",
+  "baseline": {
+    "budget": 12,
+    "planned": 12,
+    "executed": 11,
+    "invalidSkipped": 1,
+    "failedAssertions": 8,
+    "unknown": 0,
+    "suspect": 0,
+    "observedFaults": [
+      "S1",
+      "S2",
+      "S3"
+    ],
+    "observedFaultCount": 3,
+    "oracleDisagreements": 0,
+    "elapsedMs": 1156.8291789999998
+  },
+  "algorithm": {
+    "budget": 12,
+    "planned": 12,
+    "executed": 12,
+    "invalidSkipped": 0,
+    "failedAssertions": 5,
+    "unknown": 0,
+    "suspect": 0,
+    "observedFaults": [
+      "S1",
+      "S2",
+      "S3",
+      "S4"
+    ],
+    "observedFaultCount": 4,
+    "oracleDisagreements": 0,
+    "elapsedMs": 999.306949
+  },
+  "totalInjectedFaults": 4,
+  "limitations": [
+    "Synthetic fault triggers, not natural production defects.",
+    "Browser test uses CDP Page.setDocumentContent; real site navigation and DSH host loading are not verified.",
+    "Constraints are provided to the algorithm, while legacy baseline lacks constraint handling."
+  ]
+}

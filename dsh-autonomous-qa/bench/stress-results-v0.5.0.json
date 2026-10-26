@@ -1,0 +1,17 @@
+{
+  "kind": "synthetic-property-stress",
+  "iterations": 1000,
+  "generatedScenarios": 9666,
+  "feasiblePairs": 49750,
+  "coveredPairs": 49750,
+  "pairwiseCoverage": 1,
+  "duplicateCases": 0,
+  "constraintViolations": 0,
+  "coverageInconsistent": 0,
+  "emptyPlans": 0,
+  "elapsedMs": 1692,
+  "limitations": [
+    "No browser or natural software faults in this property stress.",
+    "Search bounds may leave feasible pairs uncovered; no claim of exhaustive coverage."
+  ]
+}

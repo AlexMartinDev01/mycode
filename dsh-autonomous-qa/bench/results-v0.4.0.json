@@ -1,0 +1,234 @@
+{
+  "name": "synthetic-combination-A-B",
+  "version": "0.4.0",
+  "design": "same seeded projects, independent faults, same maximum case budget; baseline=v0.3 greedy planner; algorithm=explicitly constrained weighted pairwise covering",
+  "fixtures": 5,
+  "estimatedWallMs": 100.022084,
+  "summary": {
+    "totalFaults": 20,
+    "baseline": {
+      "planned": 58,
+      "invalid": 7,
+      "detected": 17,
+      "faultDetectionRate": 0.85,
+      "feasiblePairCoverage": 0.5085324232081911
+    },
+    "algorithm": {
+      "planned": 58,
+      "invalid": 0,
+      "detected": 20,
+      "faultDetectionRate": 1,
+      "feasiblePairCoverage": 0.9129692832764505
+    }
+  },
+  "cases": [
+    {
+      "id": "signup",
+      "budget": 12,
+      "baseline": {
+        "planned": 12,
+        "valid": 11,
+        "invalid": 1,
+        "feasiblePairCoverage": 0.4961832061068702,
+        "coveredPairs": 65,
+        "feasiblePairs": 131,
+        "detectedFaults": [
+          "S1",
+          "S2",
+          "S3"
+        ],
+        "detectedCount": 3,
+        "faultUniverse": 4
+      },
+      "algorithm": {
+        "planned": 12,
+        "valid": 12,
+        "invalid": 0,
+        "feasiblePairCoverage": 0.916030534351145,
+        "coveredPairs": 120,
+        "feasiblePairs": 131,
+        "detectedFaults": [
+          "S1",
+          "S2",
+          "S3",
+          "S4"
+        ],
+        "detectedCount": 4,
+        "faultUniverse": 4
+      },
+      "planningMs": {
+        "baseline": 0.8471790000000397,
+        "algorithm": 22.068008000000038
+      },
+      "constraintCount": 2
+    },
+    {
+      "id": "checkout",
+      "budget": 12,
+      "baseline": {
+        "planned": 12,
+        "valid": 11,
+        "invalid": 1,
+        "feasiblePairCoverage": 0.4452054794520548,
+        "coveredPairs": 65,
+        "feasiblePairs": 146,
+        "detectedFaults": [
+          "C1",
+          "C3",
+          "C4"
+        ],
+        "detectedCount": 3,
+        "faultUniverse": 4
+      },
+      "algorithm": {
+        "planned": 12,
+        "valid": 12,
+        "invalid": 0,
+        "feasiblePairCoverage": 0.8698630136986302,
+        "coveredPairs": 127,
+        "feasiblePairs": 146,
+        "detectedFaults": [
+          "C1",
+          "C2",
+          "C3",
+          "C4"
+        ],
+        "detectedCount": 4,
+        "faultUniverse": 4
+      },
+      "planningMs": {
+        "baseline": 0.7496610000000032,
+        "algorithm": 16.674364000000004
+      },
+      "constraintCount": 2
+    },
+    {
+      "id": "filtering",
+      "budget": 12,
+      "baseline": {
+        "planned": 12,
+        "valid": 10,
+        "invalid": 2,
+        "feasiblePairCoverage": 0.4580152671755725,
+        "coveredPairs": 60,
+        "feasiblePairs": 131,
+        "detectedFaults": [
+          "F1",
+          "F2",
+          "F3",
+          "F4"
+        ],
+        "detectedCount": 4,
+        "faultUniverse": 4
+      },
+      "algorithm": {
+        "planned": 12,
+        "valid": 12,
+        "invalid": 0,
+        "feasiblePairCoverage": 0.9083969465648855,
+        "coveredPairs": 119,
+        "feasiblePairs": 131,
+        "detectedFaults": [
+          "F1",
+          "F2",
+          "F3",
+          "F4"
+        ],
+        "detectedCount": 4,
+        "faultUniverse": 4
+      },
+      "planningMs": {
+        "baseline": 0.13695599999999786,
+        "algorithm": 11.321422999999998
+      },
+      "constraintCount": 2
+    },
+    {
+      "id": "profile",
+      "budget": 10,
+      "baseline": {
+        "planned": 10,
+        "valid": 9,
+        "invalid": 1,
+        "feasiblePairCoverage": 0.56,
+        "coveredPairs": 42,
+        "feasiblePairs": 75,
+        "detectedFaults": [
+          "P1",
+          "P2",
+          "P3"
+        ],
+        "detectedCount": 3,
+        "faultUniverse": 4
+      },
+      "algorithm": {
+        "planned": 10,
+        "valid": 10,
+        "invalid": 0,
+        "feasiblePairCoverage": 0.9333333333333333,
+        "coveredPairs": 70,
+        "feasiblePairs": 75,
+        "detectedFaults": [
+          "P1",
+          "P2",
+          "P3",
+          "P4"
+        ],
+        "detectedCount": 4,
+        "faultUniverse": 4
+      },
+      "planningMs": {
+        "baseline": 0.17609600000002956,
+        "algorithm": 6.18496700000003
+      },
+      "constraintCount": 2
+    },
+    {
+      "id": "approval",
+      "budget": 12,
+      "baseline": {
+        "planned": 12,
+        "valid": 10,
+        "invalid": 2,
+        "feasiblePairCoverage": 0.6407766990291263,
+        "coveredPairs": 66,
+        "feasiblePairs": 103,
+        "detectedFaults": [
+          "A1",
+          "A2",
+          "A3",
+          "A4"
+        ],
+        "detectedCount": 4,
+        "faultUniverse": 4
+      },
+      "algorithm": {
+        "planned": 12,
+        "valid": 12,
+        "invalid": 0,
+        "feasiblePairCoverage": 0.9611650485436893,
+        "coveredPairs": 99,
+        "feasiblePairs": 103,
+        "detectedFaults": [
+          "A1",
+          "A2",
+          "A3",
+          "A4"
+        ],
+        "detectedCount": 4,
+        "faultUniverse": 4
+      },
+      "planningMs": {
+        "baseline": 0.3626080000000229,
+        "algorithm": 11.407974000000022
+      },
+      "constraintCount": 2
+    }
+  ],
+  "caveats": [
+    "Fault triggers are deterministic synthetic injections, not independently sampled production bugs.",
+    "This A/B evaluates input-combination planning, not DSH installation, visual QA, runtime fault attribution or full UI correctness.",
+    "Fault detection is measured by whether an independent injected trigger was reached; actual browser execution is tested separately.",
+    "Planning runtimes include JS execution and may vary with hardware; benchmark Both planning times exclude common source indexing; the algorithm time includes baseline factor extraction."
+  ]
+}

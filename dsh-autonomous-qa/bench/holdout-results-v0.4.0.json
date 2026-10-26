@@ -1,0 +1,24 @@
+{
+  "name": "seeded-synthetic-pair-holdouts",
+  "seeds": 20,
+  "seedRange": [
+    0,
+    19
+  ],
+  "totalInjectedPairFaults": 400,
+  "baseline": {
+    "detected": 206,
+    "rate": 0.515,
+    "invalid": 140
+  },
+  "algorithm": {
+    "detected": 356,
+    "rate": 0.89,
+    "invalid": 0
+  },
+  "caveats": [
+    "Pair-trigger synthetic faults are generated independently of either plan; they are not real project bugs.",
+    "Each seed uses the same five fixtures, and seeds are not independent real applications.",
+    "The algorithm has explicit constraint information unavailable to the v0.3 baseline."
+  ]
+}
